@@ -531,8 +531,12 @@ function draw(forExport = false) {
     rowHeights.push(Math.max(imageHeight(i, cardW, p ? 201 : 222), imageHeight(i + 1, cardW, p ? 201 : 222)));
   }
   
+  // 03 섹션 제목 폰트 고정을 위한 임시 변경
+  const prevFont1 = state.font;
+  state.font = 'd2'; 
   const galleryTitleH = fieldHeight('galleryTitle', gw - 48), 
         galleryStart = gy + Math.max(51, galleryTitleH + 20);
+  state.font = prevFont1; // 폰트 원상 복구
         
   const galleryBottom = galleryStart + rowHeights.reduce((n, h) => n + h + 25, 0) - 25;
   
@@ -631,6 +635,10 @@ function draw(forExport = false) {
     userField(key, x + 16, notesY + 54, noteW - 32, noteH - 28);
   });
   
+  // 03 섹션 제목 폰트 고정을 위한 임시 변경
+  const prevFont2 = state.font;
+  state.font = 'd2'; 
+
   const titleHeight = fieldHeight('galleryTitle', gw - 48);
   polygon([[gx, gy], [gx + 24, gy], [gx + 31, gy + 10], [gx + 24, gy + 22], [gx, gy + 22]], state.accent);
   text('03', gx + 5, gy + 4, 11, palette.light ? '#fff' : '#07141a');
@@ -638,6 +646,8 @@ function draw(forExport = false) {
   // Gallery headings stay single line within the available band; very large text grows it.
   userField('galleryTitle', gx + 42, gy, gw - 48, 0, palette.ink);
   line(gx + 42, gy + Math.max(28, titleHeight + 4), gx + gw, gy + Math.max(28, titleHeight + 4), palette.line);
+
+  state.font = prevFont2; // 폰트 원상 복구
   
   let imageY = galleryStart;
   state.gallery.forEach((item, i) => {
@@ -1172,8 +1182,8 @@ function positionEditor() {
     top: Math.max(0, h.y * scale) + 'px',
     width: Math.max(160, h.w * scale) + 'px',
     height: Math.max(38, h.h * scale + 8) + 'px',
-    fontFamily: contentFont(),
-    fontStyle: fontChoice().italic ? 'italic' : 'normal',
+    fontFamily: activeEdit.key === 'galleryTitle' ? mono : contentFont(),
+    fontStyle: activeEdit.key === 'galleryTitle' ? 'normal' : (fontChoice().italic ? 'italic' : 'normal'),
     fontSize: screenSize + 'px'
   });
   
