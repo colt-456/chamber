@@ -133,7 +133,7 @@ const initial = () => ({
 
 let state = initial(), hits = [], W = 1200, H = 760, currentTab = 'style', 
     pendingUpload = null, drag = null, toastTimer;
-let activeEdit = null, selectedField = 'info', exporting = false, fontSequence = 0;
+let activeEdit = null, selectedField = 'info', exporting = false, fontSequence = 0, isGalleryTitle = false;
 
 const coltLogo = new Image();
 coltLogo.src = 'colt_logo.svg';
@@ -243,6 +243,7 @@ function contentFont() {
 }
 
 function fontSpec(size) {
+  if (isGalleryTitle) return `600 ${size}px ${mono}`;
   return `${fontChoice().italic ? 'italic ' : ''}400 ${size}px ${contentFont()}`;
 }
 
@@ -534,8 +535,10 @@ function draw(forExport = false) {
   // 03 섹션 제목 폰트 고정을 위한 임시 변경
   const prevFont1 = state.font;
   state.font = 'd2'; 
+  isGalleryTitle = true;
   const galleryTitleH = fieldHeight('galleryTitle', gw - 48), 
         galleryStart = gy + Math.max(51, galleryTitleH + 20);
+  isGalleryTitle = false;
   state.font = prevFont1; // 폰트 원상 복구
         
   const galleryBottom = galleryStart + rowHeights.reduce((n, h) => n + h + 25, 0) - 25;
@@ -639,6 +642,7 @@ function draw(forExport = false) {
   const prevFont2 = state.font;
   state.font = 'd2'; 
 
+  isGalleryTitle = true;
   const titleHeight = fieldHeight('galleryTitle', gw - 48);
   polygon([[gx, gy], [gx + 24, gy], [gx + 31, gy + 10], [gx + 24, gy + 22], [gx, gy + 22]], state.accent);
   text('03', gx + 5, gy + 4, 11, palette.light ? '#fff' : '#07141a');
@@ -646,7 +650,8 @@ function draw(forExport = false) {
   // Gallery headings stay single line within the available band; very large text grows it.
   userField('galleryTitle', gx + 42, gy, gw - 48, 0, palette.ink);
   line(gx + 42, gy + Math.max(28, titleHeight + 4), gx + gw, gy + Math.max(28, titleHeight + 4), palette.line);
-
+  isGalleryTitle = false;
+  
   state.font = prevFont2; // 폰트 원상 복구
   
   let imageY = galleryStart;
