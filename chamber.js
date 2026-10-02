@@ -16,6 +16,7 @@ function navigate() {
     else link.removeAttribute("aria-current");
   });
   document.title = `${route === "home" ? "CHAMBER" : route === "profile" ? "SYS.PROFILE" : "TXT.EXTRACT"} · @COLT`;
+  window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", navigate);
 navigate();
