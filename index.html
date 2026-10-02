@@ -1,214 +1,134 @@
 <!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SYS. PROFILE @COLT</title>
-  <meta name="description" content="화면에서 바로 작성하는 SF 자기소개표. 테마, 웹폰트, 이미지와 스티커를 설정하고 PNG로 저장합니다.">
-  <link rel="icon" href="favicon.svg">
-  <link rel="preload" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff" as="font" type="font/woff" crossorigin>
-  <link rel="stylesheet" href="fonts.css">
-  <link rel="stylesheet" href="style.css">
-  <script src="app.js" defer></script>
-</head>
-<body>
-  <main class="workspace">
-    <aside class="editor" aria-label="CONTROL PANEL">
-      <div class="editor-title">
-        <span class="eyebrow">SYS. CONTROL</span>
-        <button id="help" class="quiet" aria-label="User Manual">?</button>
-        <h1>Control Panel<span>EDIT / 01</span></h1>
-      </div>
-      
-      <nav class="tabs" aria-label="편집 메뉴">
-        <button data-tab="style" class="active">THEME</button>
-        <button data-tab="fonts">FONT</button>
-        <button data-tab="images">IMAGE</button>
-        <button data-tab="stickers">STICKER</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CHAMBER · @COLT</title>
+    <meta
+      name="description"
+      content="나의 기록을 위한 작은 관제실. SF 프로필과 소설·채팅 발췌 이미지 메이커."
+    />
+    <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="chamber.css" />
+    <script src="chamber.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="CHAMBER 홈"
+        ><span class="brand-icon">C<span>+</span></span> CHAMBER
+        <small> / PERSONAL TERMINAL</small></a
+      >
+      <nav aria-label="메인 탭">
+        <a href="#home" data-route="home">HOME</a>
+        <a href="#profile" data-route="profile">SYS.PROFILE</a>
+        <a href="#excerpt" data-route="excerpt">TXT.EXTRACT</a>
       </nav>
-
-      <div class="panel" id="panel-style">
-        <div class="section-title">
-          <span>01</span> Theme Freeset
-        </div>
-        <div id="theme-presets" class="theme-presets" aria-label="테마 프리셋"></div>
-        <p class="hint">배경 · 글자 · 프레임이 함께 바뀝니다.</p>
-        
-        <div class="section-title">
-          <span>02</span> Detail Colors
-        </div>
-        <label>Point Color
-          <div class="color-field">
-            <input type="color" id="accent" value="#52ded3" aria-label="포인트 색상">
-            <input id="accent-hex" value="#52DED3" maxlength="7" aria-label="포인트 HEX">
-          </div>
-        </label>
-        <label>Background Start
-          <div class="color-field">
-            <input type="color" id="bg1" value="#081c21" aria-label="배경 시작 색상">
-            <input id="bg1-hex" value="#081C21" maxlength="7" aria-label="배경 시작 HEX">
-          </div>
-        </label>
-        <label>Background End
-          <div class="color-field">
-            <input type="color" id="bg2" value="#02090d" aria-label="배경 끝 색상">
-            <input id="bg2-hex" value="#02090D" maxlength="7" aria-label="배경 끝 HEX">
-          </div>
-        </label>
-        
-        <label class="check">
-          <input type="checkbox" id="grid" checked> Background Grid
-        </label>
-        <label class="check">
-          <input type="checkbox" id="mono"> Image Grayscale
-        </label>
-        
-        <button class="outline full" id="reset-colors">Restore Default Theme Colors</button>
+      <span class="online"><i></i> SYSTEM ONLINE</span>
+    </header>
+    <main id="home" class="home-view">
+      <div class="home-meta">
+        <span>WORKSPACE / 001</span><span>PRIVATE CREATIVE SPACE <b>↗</b></span>
       </div>
-
-      <div class="panel" id="panel-fonts" hidden>
-        <div class="section-title">
-          <span>01</span> Input Font
-        </div>
-        <p class="hint">선택한 글꼴이 모든 입력 내용에 적용됩니다. 템플릿의 제목과 장식은 유지됩니다.</p>
-        <div id="font-options" class="font-options"></div>
-        <p id="font-status" class="hint" role="status">D2Coding을 불러오는 중입니다.</p>
-        
-        <div class="section-title">
-          <span>02</span> Font Size
-        </div>
-        <div class="type-size-box">
-          <div class="type-target">선택한 내용 <b id="selected-field-name">INFO</b></div>
-          <div class="size-control">
-            <button id="size-minus" aria-label="글자 크기 1px 줄이기">−</button>
-            <label class="size-input">
-              <input id="font-size" type="number" min="10" max="64" value="17" aria-label="선택한 내용 글자 크기">
-              <span>px</span>
-            </label>
-            <button id="size-plus" aria-label="글자 크기 1px 늘리기">＋</button>
-          </div>
-          <button id="apply-size-all" class="outline full">모든 입력 내용에 이 크기 적용</button>
-        </div>
-        <p class="hint">미리보기의 텍스트를 누르면 크기 조절 대상이 바뀝니다. 항목 제목·태그·제작자 표기의 크기는 고정됩니다.</p>
-      </div>
-
-      <div class="panel" id="panel-images" hidden>
-        <div class="section-title">
-          <span>01</span> Profile Image
-        </div>
-        <button class="upload-zone" id="upload-avatar">
-          <span>＋</span> Upload Image<small>PNG · JPG · WEBP / 최대 10MB</small>
-        </button>
-        <div id="avatar-tools" hidden></div>
-        
-        <div class="section-title">
-          <span>02</span> Image Cells <span id="image-count"></span>
-        </div>
-        <p class="hint">캡션은 미리보기의 이미지 하단에서 바로 작성합니다.</p>
-        <div id="gallery-controls"></div>
-        <button class="outline full" id="add-image">＋ 이미지 칸 추가</button>
-      </div>
-
-      <div class="panel" id="panel-stickers" hidden>
-        <div class="section-title">
-          <span>01</span> Sticker
-        </div>
-        <p class="hint">투명 PNG를 올린 후 미리보기에서 드래그해 배치합니다.</p>
-        <button class="upload-zone" id="upload-sticker">
-          <span>＋</span> Sticker Upload<small>투명 배경 PNG 권장 / 최대 10MB</small>
-        </button>
-        <div id="sticker-controls"></div>
-      </div>
-
-      <div class="editor-bottom">
-        <span>LOCAL EDIT ONLY</span>
-        <button id="reset" class="quiet">RESET ↺</button>
-      </div>
-    </aside>
-
-    <section class="preview" aria-label="자기소개표 편집 화면">
-      <div class="preview-toolbar">
-        <div class="sys-title">
-          SYS. <strong>PROFILE</strong><span>화면상의 텍스트를 눌러 입력합니다.</span>
-        </div>
-        <div class="toolbar-actions">
-          <div class="segmented small">
-            <button data-layout="landscape" class="selected">▭ Landscape</button>
-            <button data-layout="portrait">▯ Portrait</button>
-          </div>
-          <button id="export" class="primary">
-            <svg viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 15v5h16v-5"/></svg>
-            <span>PNG SAVE</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="stage" id="stage">
-        <div class="artboard">
-          <div class="canvas-meta">
-            <span>PROFILE / <b id="layout-label">LANDSCAPE</b></span>
-            <span id="dimensions"></span>
-          </div>
-          <div class="canvas-wrap" id="canvas-wrap">
-            <canvas id="card" role="img" aria-label="자기소개표. 텍스트 영역을 누르면 바로 편집할 수 있습니다."></canvas>
-            <div id="field-hotspots" class="field-hotspots" aria-label="텍스트 및 성향 편집"></div>
-            <textarea id="inline-editor" class="inline-editor" aria-label="내용 직접 편집" spellcheck="false" hidden></textarea>
-          </div>
-          <div class="canvas-foot">
-            <span id="editing-hint">샘플 텍스트는 첫 클릭 시 지워집니다.</span>
-            <span id="scale-label"></span>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span> CONNECTION ESTABLISHED</p>
+          <h1>YOUR OWN<br /><em>CHAMBER.</em></h1>
+          <p class="intro">
+            당신의 이야기와 기록이 머무는 곳.<br />모듈을 선택하고, 새로운
+            작업을 시작하세요.
+          </p>
+          <div class="hero-coordinates">
+            <span>OPERATOR <b>@COLT</b></span
+            ><span>STATUS <b>READY TO CREATE</b></span>
           </div>
         </div>
-      </div>
-
-      <footer class="preview-footer">
-        <span>이미지 · 스티커 드래그 이동</span>
-        <span>휠 확대·축소</span>
-        <span>입력 완료: 영역 바깥 클릭 · 취소: Esc</span>
+        <div class="radar" aria-hidden="true">
+          <div class="radar-ring ring-1"></div>
+          <div class="radar-ring ring-2"></div>
+          <div class="radar-ring ring-3"></div>
+          <div class="radar-axis axis-x"></div>
+          <div class="radar-axis axis-y"></div>
+          <span class="radar-north">N / 000</span
+          ><span class="radar-west">270</span
+          ><span class="radar-east">090</span>
+          <div class="radar-core">C<span>CHAMBER</span></div>
+          <span class="radar-point point-one"></span
+          ><span class="radar-point point-two"></span
+          ><span class="radar-caption">SIGNAL LOCKED · 02 MODULES</span>
+        </div>
+      </section>
+      <section class="modules" aria-labelledby="modules-title">
+        <div class="section-heading">
+          <h2 id="modules-title">AVAILABLE MODULES</h2>
+          <span>SELECT A MODULE TO ENTER ↓</span>
+        </div>
+        <div class="module-grid">
+          <a class="module-card" href="#profile"
+            ><div class="module-top">
+              <span>01 / IDENTITY</span><span class="tag">ACTIVE</span>
+            </div>
+            <div class="module-symbol">[ <span>⌖</span> ]</div>
+            <h3>SYS.PROFILE</h3>
+            <p>
+              나를 소개하는 하나의 인터페이스.<br />프로필을 꾸미고 이미지로
+              기록하세요.
+            </p>
+            <div class="module-bottom">
+              <span>프로필 메이커 열기</span><b>↗</b>
+            </div></a
+          >
+          <a class="module-card extract-card" href="#excerpt"
+            ><div class="module-top">
+              <span>02 / ARCHIVE</span><span class="tag">NEW MODULE</span>
+            </div>
+            <div class="module-symbol">[ <span>“ ”</span> ]</div>
+            <h3>TXT.EXTRACT</h3>
+            <p>
+              간직하고 싶은 장면, 오래 남을 대사.<br />소설과 채팅을 나만의
+              이미지로 만드세요.
+            </p>
+            <div class="module-bottom"><span>발췌기 열기</span><b>↗</b></div></a
+          >
+          <div class="module-card pending">
+            <div class="module-top">
+              <span>03 / UNASSIGNED</span><span>—</span>
+            </div>
+            <div class="module-symbol">[ <span>+</span> ]</div>
+            <h3>NEXT.MODULE</h3>
+            <p>
+              아직 쓰이지 않은 다음 이야기.<br />새로운 도구가 이곳에
+              연결됩니다.
+            </p>
+            <div class="module-bottom">
+              <span>확장 대기 중</span><span class="pending-bars">▰ ▱ ▱ ▱</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <footer class="home-footer">
+        <span>MADE BY @COLT <b> / </b> CHAMBER SYSTEM</span
+        ><span>CREATE · COLLECT · KEEP</span>
       </footer>
+    </main>
+    <section
+      id="profile-view"
+      class="module-view"
+      hidden
+      aria-label="SYS.PROFILE"
+    >
+      <iframe
+        title="SYS.PROFILE 프로필 편집기"
+        data-src="profile.html"
+      ></iframe>
     </section>
-  </main>
-
-  <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp" hidden>
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-  <dialog id="help-dialog">
-    </ol>
-    <button class="dialog-close quiet" aria-label="가이드 닫기">×</button>
-    <span class="eyebrow">QUICK GUIDE</span>
-    <h2>미리보기에서 바로 작성합니다.</h2>
-    <ol>
-      <li>
-        <b>텍스트 편집</b>
-        <p>이름, 소개, 장르, INFO, NG, 이미지 캡션을 누르면 입력창이 나타납니다. 첫 편집 시 샘플이 지워지며, 이후에는 작성한 내용이 유지됩니다.</p>
-      </li>
-      <li>
-        <b>글꼴과 크기</b>
-        <p>Font 탭에서 모든 입력 내용의 글꼴을 바꿉니다. 크기는 선택한 텍스트에 px 단위로 적용되며, 전체 내용에 적용할 수도 있습니다.</p>
-      </li>
-      <li>
-        <b>태그와 이미지</b>
-        <p>성향 태그는 미리보기에서 누릅니다. ＋ 버튼으로 직접 태그를 추가합니다. 이미지와 스티커는 드래그·휠로 배치합니다.</p>
-      </li>
-      <li>
-        <b>저장</b>
-        <p>PNG 저장은 글꼴 로딩 후 2배 해상도로 진행됩니다. 편집 테두리는 출력되지 않습니다. 새로고침하면 작업 내용이 초기화됩니다.</p>
-      </li>
-    </ol>
-    <!-- 추가할 폰트 크레딧 코드 -->
-    <p style="font-size: 10px; text-align: center; margin-top: 30px; opacity: 0.6;">
-      본 웹사이트는 D2Coding, 나눔고딕코딩, Orbit, 엘리스 디지털 배움체, Intel One Mono, 구름 산스 코드, Mona 폰트를 사용하고 있습니다.
-    </p>
-    <button class="primary full dialog-close">ACCESS</button>
-  </dialog>
-
-  <dialog id="reset-dialog">
-    <h2>전체 내용을 초기화합니까?</h2>
-    <p>지금까지 입력한 편집 내용을 되돌릴 수 없습니다.</p>
-    <div class="dialog-buttons">
-      <button class="outline" id="cancel-reset">CANCEL</button>
-      <button class="primary" id="confirm-reset">RESET</button>
-    </div>
-  </dialog>
-</body>
+    <section
+      id="excerpt-view"
+      class="module-view"
+      hidden
+      aria-label="TXT.EXTRACT"
+    >
+      <iframe title="TXT.EXTRACT 발췌 편집기" data-src="excerpt.html"></iframe>
+    </section>
+  </body>
 </html>

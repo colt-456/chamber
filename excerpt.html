@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TXT.EXTRACT · @COLT</title>
+    <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="excerpt.css" />
+    <script src="excerpt-core.js" defer></script>
+    <script src="excerpt.js" defer></script>
+  </head>
+  <body>
+    <div class="extract-workspace">
+      <aside class="controls" aria-label="발췌 편집 도구">
+        <header class="control-title">
+          <p>CHAMBER / MODULE 02</p>
+          <h1>TXT.EXTRACT <span>발췌기</span></h1>
+        </header>
+        <nav class="editor-tabs" aria-label="발췌 편집 메뉴">
+          <button data-panel="text" aria-selected="true">내용</button
+          ><button data-panel="type" aria-selected="false">서식</button
+          ><button data-panel="background" aria-selected="false">배경</button
+          ><button data-panel="output" aria-selected="false">출력</button>
+        </nav>
+        <div class="panel-scroll">
+          <section id="panel-text" class="panel">
+            <div class="section-title"><span>01</span> TEXT INPUT</div>
+            <label for="raw-text"
+              >발췌 내용 <span class="subtle">서식 없이 붙여넣기</span></label
+            >
+            <textarea
+              id="raw-text"
+              rows="9"
+              maxlength="30000"
+              placeholder="*별표로 감싼 문장은 지문으로 분리됩니다.*&#10;하린: 여기에 대사를 입력하세요.&#10;서윤: 인물명도 자동으로 구분할 수 있어요."
+            ></textarea>
+            <div class="input-note">
+              <span id="char-count">0 / 30,000</span
+              ><button id="sample" class="text-button">예시 불러오기</button>
+            </div>
+            <label for="plain-type">표시 없는 문장의 기본 분류</label
+            ><select id="plain-type">
+              <option value="dialogue">대사 — 채팅·롤플레잉</option>
+              <option value="narration">지문 — 소설·산문</option>
+            </select>
+            <button id="parse" class="primary full">
+              내용 적용 · 지문 / 대사 자동 분리 ↗
+            </button>
+            <p class="hint">
+              별표는 지문, 큰따옴표는 대사, ‘이름: 대사’는 인물로 인식합니다.
+              아래에서 직접 고칠 수 있습니다. 다시 적용하면 문단별 수정은
+              초기화됩니다.
+            </p>
+            <div class="section-title">
+              <span>02</span> BLOCK EDITOR <b id="block-count">0</b>
+            </div>
+            <p class="hint">
+              문단을 선택해 분류와 인물을 수정하세요. 서식 탭에서는 지문·대사
+              또는 같은 인물의 표시를 한 번에 바꿀 수 있습니다.
+            </p>
+            <div
+              id="block-list"
+              class="block-list"
+              aria-label="분리된 문단"
+            ></div>
+            <div id="block-editor" hidden>
+              <div class="two-col">
+                <label
+                  >분류<select id="block-type">
+                    <option value="narration">지문</option>
+                    <option value="dialogue">대사</option>
+                  </select></label
+                ><label
+                  >인물명<input
+                    id="block-speaker"
+                    list="speaker-list"
+                    maxlength="24"
+                    placeholder="선택 사항"
+                /></label>
+              </div>
+              <datalist id="speaker-list"></datalist>
+              <label for="block-text">선택 문단 내용</label
+              ><textarea id="block-text" rows="5"></textarea>
+              <div class="inline-toolbar" aria-label="선택한 글자 서식">
+                <button data-mark="bold" title="선택 글자 굵게"><b>B</b></button
+                ><button data-mark="italic" title="선택 글자 이탤릭">
+                  <i>I</i></button
+                ><button data-mark="strike" title="선택 글자 취소선">
+                  <s>S</s></button
+                ><input
+                  id="mark-color"
+                  type="color"
+                  value="#ffee88"
+                  aria-label="형광펜 색상"
+                /><button data-mark="highlight">형광펜</button
+                ><button id="clear-marks">초기화</button>
+              </div>
+              <p class="hint">
+                위 내용에서 글자를 드래그한 다음 서식 버튼을 누르세요. 선택하지
+                않으면 문단 전체에 적용됩니다. 내용 수정 시 이 문단의 부분
+                서식은 초기화됩니다.
+              </p>
+              <div class="two-col">
+                <button id="delete-block">문단 삭제</button
+                ><button id="add-block">＋ 뒤에 문단 추가</button>
+              </div>
+            </div>
+            <div class="section-title"><span>03</span> SOURCE CREDIT</div>
+            <label
+              >제목<input
+                id="title"
+                maxlength="100"
+                placeholder="기록할 장면의 제목"
+            /></label>
+            <label
+              >제작자<input
+                id="creator"
+                maxlength="100"
+                placeholder="작가 · 제작자 이름"
+            /></label>
+            <label
+              >캐릭터<input
+                id="character"
+                maxlength="100"
+                placeholder="캐릭터 · 페어 이름"
+            /></label>
+            <label
+              >플랫폼<input
+                id="platform"
+                maxlength="100"
+                placeholder="플랫폼 이름"
+            /></label>
+            <label
+              >출처 / 추가 표기<input
+                id="source"
+                maxlength="300"
+                placeholder="작품명 · 링크 · 회차 등"
+            /></label>
+          </section>
+          <section id="panel-type" class="panel" hidden>
+            <div class="section-title"><span>01</span> READING FORMAT</div>
+            <div class="segmented" aria-label="표현 형식">
+              <button data-format="novel" aria-pressed="true">소설형</button
+              ><button data-format="chat" aria-pressed="false">채팅형</button>
+            </div>
+            <label
+              >글꼴<select id="font-family" data-config="fontFamily">
+                <option
+                  value="'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif"
+                >
+                  고딕 · 시스템
+                </option>
+                <option value="'Batang', 'AppleMyungjo', serif">
+                  명조 · 시스템
+                </option>
+                <option value="'D2Coding', monospace">D2Coding</option>
+                <option value="'Nanum Gothic Coding', monospace">
+                  나눔고딕코딩
+                </option>
+                <option value="'Orbit', sans-serif">Orbit</option>
+              </select></label
+            >
+            <div class="two-col">
+              <label
+                >글자 크기 (px)<input
+                  type="number"
+                  id="font-size"
+                  data-config="fontSize"
+                  min="12"
+                  max="64"
+                  value="24" /></label
+              ><label
+                >줄 간격 (배)<input
+                  type="number"
+                  data-config="lineHeight"
+                  min="1.2"
+                  max="2.8"
+                  step="0.1"
+                  value="1.8"
+              /></label>
+            </div>
+            <label
+              >장평 <output id="widthScale-value">100%</output
+              ><input
+                type="range"
+                data-config="widthScale"
+                min="0.6"
+                max="1.4"
+                step="0.01"
+                value="1"
+            /></label>
+            <label
+              >자간 <output id="letterSpacing-value">0px</output
+              ><input
+                type="range"
+                data-config="letterSpacing"
+                min="-2"
+                max="10"
+                step="0.5"
+                value="0"
+            /></label>
+            <div class="two-col">
+              <label
+                >문단 간격 (px)<input
+                  type="number"
+                  data-config="paragraphGap"
+                  min="0"
+                  max="100"
+                  value="20" /></label
+              ><label
+                >전체 여백 (px)<input
+                  type="number"
+                  data-config="padding"
+                  min="24"
+                  max="180"
+                  value="56"
+              /></label>
+            </div>
+            <div class="two-col">
+              <label
+                >지문 추가 간격<input
+                  type="number"
+                  data-config="narrationGap"
+                  min="0"
+                  max="100"
+                  value="8" /></label
+              ><label
+                >대사 추가 간격<input
+                  type="number"
+                  data-config="dialogueGap"
+                  min="0"
+                  max="100"
+                  value="0"
+              /></label>
+            </div>
+            <div class="section-title"><span>02</span> BATCH STYLE</div>
+            <label
+              >한 번에 편집할 대상<select id="style-target">
+                <option value="narration">모든 지문</option>
+                <option value="dialogue">모든 대사</option>
+              </select></label
+            >
+            <p id="target-note" class="hint">
+              같은 유형의 모든 문단에 적용됩니다.
+            </p>
+            <div class="two-col">
+              <label
+                >글자 색<input
+                  type="color"
+                  id="style-color"
+                  value="#b2c7d1" /></label
+              ><label
+                >말풍선 색<input type="color" id="style-bubble" value="#12313b"
+              /></label>
+            </div>
+            <div class="toggle-row">
+              <label><input id="style-bold" type="checkbox" /> 굵게</label
+              ><label><input id="style-italic" type="checkbox" /> 이탤릭</label
+              ><label><input id="style-strike" type="checkbox" /> 취소선</label>
+            </div>
+            <div class="two-col">
+              <label class="check-label"
+                ><input id="style-highlight-on" type="checkbox" /> 형광펜</label
+              ><label
+                >형광펜 색<input
+                  type="color"
+                  id="style-highlight"
+                  value="#526124"
+              /></label>
+            </div>
+            <label
+              >채팅 말풍선 위치<select id="style-align">
+                <option value="auto">인물 순서로 좌 / 우</option>
+                <option value="left">왼쪽</option>
+                <option value="right">오른쪽</option>
+              </select></label
+            >
+            <button id="reset-overrides" class="full">
+              이 대상의 개별 서식 지우기
+            </button>
+            <p class="hint">
+              개별 문단·부분 서식은 일괄 서식보다 우선합니다. 초기화하면 선택한
+              대상에 속한 인물·문단·부분 서식을 함께 지워 일괄 서식을
+              적용합니다.
+            </p>
+          </section>
+          <section id="panel-background" class="panel" hidden>
+            <div class="section-title"><span>01</span> BACKGROUND THEME</div>
+            <div class="presets">
+              <button data-theme="signal">
+                <i style="background: #081c21"></i> SIGNAL</button
+              ><button data-theme="paper">
+                <i style="background: #f3eee5"></i> PAPER</button
+              ><button data-theme="midnight">
+                <i style="background: #171729"></i> MIDNIGHT</button
+              ><button data-theme="rose">
+                <i style="background: #f7e9ed"></i> ROSE
+              </button>
+            </div>
+            <div class="two-col">
+              <label
+                >배경 색<input
+                  type="color"
+                  data-config="background"
+                  value="#081c21" /></label
+              ><label
+                >프레임 색<input
+                  type="color"
+                  data-config="accent"
+                  value="#52ded3"
+              /></label>
+            </div>
+            <label
+              >제목 · 출처 색<input
+                type="color"
+                data-config="ink"
+                value="#dfedee"
+            /></label>
+            <label class="check-label"
+              ><input type="checkbox" data-config="grid" checked /> HUD 배경
+              격자 표시</label
+            >
+            <div class="section-title"><span>02</span> IMAGE LAYER</div>
+            <label class="upload-label" for="background-file"
+              ><span>＋ 배경 이미지 첨부</span
+              ><small>PNG · JPG · WEBP / 최대 15MB</small
+              ><input
+                type="file"
+                id="background-file"
+                accept="image/png,image/jpeg,image/webp"
+            /></label>
+            <p id="image-name" class="hint">
+              첨부한 이미지는 브라우저 안에서만 사용됩니다.
+            </p>
+            <label
+              >이미지 불투명도 <output id="imageOpacity-value">50%</output
+              ><input
+                type="range"
+                data-config="imageOpacity"
+                min="0"
+                max="1"
+                step="0.01"
+                value="0.5"
+            /></label>
+            <label
+              >이미지 밝기 <output id="imageBrightness-value">100%</output
+              ><input
+                type="range"
+                data-config="imageBrightness"
+                min="0"
+                max="200"
+                step="1"
+                value="100"
+            /></label>
+            <button id="remove-background" class="full">
+              배경 이미지 제거
+            </button>
+            <p class="hint">
+              이미지는 각 페이지에 꽉 차게 배치되며 중앙을 기준으로 잘립니다.
+              불투명도는 배경 사진에만 적용됩니다.
+            </p>
+          </section>
+          <section id="panel-output" class="panel" hidden>
+            <div class="section-title"><span>01</span> PAGE SIZE</div>
+            <label
+              >페이지 나누기<select id="page-mode" data-config="pageMode">
+                <option value="auto">자동 높이 — 내용에 맞게 한 장</option>
+                <option value="fixed">지정 크기 — 넘치면 자동 분할</option>
+                <option value="four">4장 맞춤 — 높이 자동 확장</option>
+              </select></label
+            >
+            <p id="page-mode-note" class="hint"></p>
+            <div class="two-col">
+              <label
+                >너비 (px)<input
+                  type="number"
+                  id="page-width"
+                  data-config="width"
+                  min="320"
+                  max="1800"
+                  step="10"
+                  value="800" /></label
+              ><label id="height-label"
+                >높이 (px)<input
+                  type="number"
+                  id="page-height"
+                  data-config="height"
+                  min="320"
+                  max="12000"
+                  step="10"
+                  value="1000"
+              /></label>
+            </div>
+            <div class="preset-sizes">
+              <button data-size="800,800">1:1</button
+              ><button data-size="800,1000">4:5</button
+              ><button data-size="900,1600">9:16</button
+              ><button data-size="1200,675">16:9</button>
+            </div>
+            <p class="hint">
+              4장 맞춤은 입력한 높이를 최소 높이로 사용합니다. 내용이 넘치면 네
+              장을 같은 높이로 늘립니다. 글자 크기는 유지하고, 글줄 사이에서
+              분리합니다.
+            </p>
+            <div class="section-title"><span>02</span> EXPORT</div>
+            <button id="export-current" class="primary full">
+              현재 페이지 PNG 저장 ↓
+            </button>
+            <button id="export-all" class="full">
+              전체 PNG 묶음 저장 (.zip) ↓
+            </button>
+            <p class="hint">
+              미리보기와 동일한 픽셀 크기로 저장합니다. 여러 장은 ZIP 안의 개별
+              PNG로 제공됩니다. 매우 긴 자동 높이는 12,000px 단위로 안전하게
+              나눕니다.
+            </p>
+            <div class="section-title"><span>03</span> SAVE YOUR WORK</div>
+            <button id="save-project" class="full">
+              편집 파일 저장 (.json)</button
+            ><label class="import-label"
+              >편집 파일 불러오기<input
+                type="file"
+                id="load-project"
+                accept="application/json,.json"
+            /></label>
+            <p class="hint">
+              새로고침 전 편집 파일을 저장해 주세요. 내용·서식·배경 이미지를
+              함께 보관하고 다시 편집할 수 있습니다. 홈 / 탭 이동 중에는 작업이
+              유지됩니다.
+            </p>
+          </section>
+        </div>
+        <footer class="control-footer">
+          <span class="status-dot"></span> LOCAL WORKSPACE
+          <span>MADE BY @COLT</span>
+        </footer>
+      </aside>
+      <main class="preview-panel">
+        <header class="preview-toolbar">
+          <div>
+            <span class="eyebrow">LIVE PREVIEW</span>
+            <h2>기록의 한 장 <span id="format-label">NOVEL</span></h2>
+          </div>
+          <button id="quick-export" class="primary">PNG 저장 ↓</button>
+        </header>
+        <div class="preview-meta">
+          <span id="dimensions">800 × — PX</span>
+          <div>
+            <button id="zoom-out" aria-label="미리보기 축소">−</button
+            ><span id="zoom-label">맞춤</span
+            ><button id="zoom-in" aria-label="미리보기 확대">＋</button
+            ><button id="zoom-fit">맞춤</button>
+          </div>
+        </div>
+        <div id="preview-scroll" class="preview-scroll">
+          <div id="canvas-holder">
+            <canvas
+              id="excerpt-canvas"
+              aria-label="발췌 이미지 미리보기"
+            ></canvas>
+          </div>
+          <div id="empty-state">
+            <span>[ “ ” ]</span>
+            <h3>남기고 싶은 문장을 담아보세요.</h3>
+            <p>
+              내용을 붙여넣고 ‘내용 적용’을 누르면<br />이곳에 발췌 이미지가
+              만들어집니다.
+            </p>
+            <button id="empty-sample">예시로 시작하기 ↗</button>
+          </div>
+        </div>
+        <footer class="preview-footer">
+          <div class="page-navigation">
+            <button id="previous-page" aria-label="이전 페이지">←</button
+            ><span id="page-number">01 / 01</span
+            ><button id="next-page" aria-label="다음 페이지">→</button>
+          </div>
+          <span id="status" role="status" aria-live="polite"
+            >내용을 입력해 주세요.</span
+          >
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>
