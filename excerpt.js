@@ -1,13 +1,16 @@
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id),
-    core = window.ExcerptCore;
+    core = window.ExcerptCore,
+    profile = window.ChamberProfile;
+  const fontFamily = (f) => `"${f.family}", "D2Coding", monospace`;
   const canvas = $("excerpt-canvas"),
     measure = document.createElement("canvas").getContext("2d");
   const defaultConfig = {
     format: "novel",
-    fontFamily: "'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif",
-    fontSize: 24,
+    fontFamily: fontFamily(profile.FONTS[0]),
+    fontItalic: false,
+    fontSize: 16, // 12pt at 96 CSS pixels per inch.
     lineHeight: 1.8,
     widthScale: 1,
     letterSpacing: 0,
@@ -15,10 +18,16 @@
     narrationGap: 8,
     dialogueGap: 0,
     padding: 56,
-    background: "#081c21",
-    accent: "#52ded3",
-    ink: "#dfedee",
-    bubble: "#12313b",
+    theme: "sirius",
+    background: "#0a1322",
+    backgroundEnd: "#03060c",
+    accent: "#b8d7ff",
+    ink: "#e4f1f5",
+    bubble: "#14233b",
+    bubbleShape: "sf",
+    showAvatars: false,
+    frameStyle: "hud",
+    pageNumbers: false,
     grid: true,
     imageOpacity: 0.5,
     imageBrightness: 100,
@@ -28,7 +37,7 @@
   };
   const defaultStyles = {
     narration: {
-      color: "#afc4cc",
+      color: "#b2c7d1",
       bold: false,
       italic: false,
       strike: false,
@@ -36,7 +45,7 @@
       align: "auto",
     },
     dialogue: {
-      color: "#edf6f6",
+      color: "#e4f1f5",
       bold: false,
       italic: false,
       strike: false,
@@ -44,10 +53,31 @@
       align: "auto",
     },
   };
+  const customFonts = [];
+  const allFonts = () => [...profile.FONTS, ...customFonts];
+  const defaultMetadata = () =>
+    Object.fromEntries(
+      ["title", "creator", "character", "platform", "source"].map((key) => [
+        key,
+        {
+          position: key === "title" ? "tl" : key === "platform" ? "br" : "bl",
+          inherit: true,
+          label: key !== "title",
+          bold: key === "title",
+          size: 14,
+          color: "#e4f1f5",
+          fontFamily: fontFamily(profile.FONTS[0]),
+          fontItalic: false,
+        },
+      ]),
+    );
   let state = {
     config: { ...defaultConfig },
     styles: structuredClone(defaultStyles),
     speakers: {},
+    speakerImages: Object.create(null),
+    speakerData: Object.create(null),
+    metadata: defaultMetadata(),
     blocks: [],
     title: "",
     creator: "",
@@ -67,7 +97,7 @@
   let selection = { start: 0, end: 0 },
     exportSequence = 0;
   const SAMPLE =
-    "*늦은 밤, 관제실에는 낮은 기계음만 남아 있었다.*\n하린: “이 신호, 아직 살아 있어.”\n*서윤은 꺼져 가던 모니터 위로 손을 뻗었다.*\n서윤: 누군가 우리를 기다리고 있다는 뜻이겠지.\n하린: 그럼 답해야지. 여기에 있다고.\n*작은 빛 하나가 어둠 속에서 천천히 깜박였다.*";
+    "*관제실 단말에 미확인 신호가 포착됐다.*\nALPHA: 신호 확인. 좌표 전송한다.\n*BRAVO는 수신 좌표를 지도에 대조했다.*\nBRAVO: 목표 구역 일치. 진입 명령 대기.\nALPHA: 진입 승인. 통신 유지하라.\n*두 개의 식별 신호가 작전 구역으로 이동했다.*";
   function message(text, error = false) {
     $("status").textContent = text;
     $("status").classList.toggle("error", error);
@@ -108,7 +138,7 @@
       $("next-page").disabled = true;
       $("page-number").textContent = "00 / 00";
       $("dimensions").textContent = `${state.config.width} × — PX`;
-      message("내용을 입력해 주세요.");
+      message("TEXT INPUT / STANDBY");
       return;
     }
     try {
@@ -137,18 +167,23 @@
     document.querySelectorAll("[data-config]").forEach((input) => {
       const value = state.config[input.dataset.config];
       if (input.type === "checkbox") input.checked = value;
-      else input.value = value;
+      else
+        input.value =
+          input.dataset.unit === "pt" ? +(value * 0.75).toFixed(2) : value;
     });
-    document
-      .querySelectorAll("[data-format]")
-      .forEach((b) =>
-        b.setAttribute(
-          "aria-pressed",
-          String(b.dataset.format === state.config.format),
-        ),
+    document.querySelectorAll("[data-format]").forEach((b) => {
+      b.setAttribute(
+        "aria-pressed",
+        String(b.dataset.format === state.config.format),
       );
+      b.classList.toggle("selected", b.dataset.format === state.config.format);
+    });
     for (const field of ["title", "creator", "character", "platform", "source"])
       $(field).value = state[field];
+    renderFonts();
+    renderThemes();
+    updateChrome();
+    syncMetadata();
     updateOutputs();
   }
   function updateOutputs() {
@@ -162,19 +197,18 @@
     $("page-height").disabled = state.config.pageMode === "auto";
     $("page-mode-note").textContent =
       state.config.pageMode === "auto"
-        ? "내용 길이에 맞춰 세로 길이를 자동으로 계산합니다."
+        ? "AUTO / 본문 길이 기준 높이 산출."
         : state.config.pageMode === "four"
-          ? "총 4장으로 나눕니다. 짧은 내용은 빈 페이지가 생길 수 있습니다."
-          : "지정한 너비와 높이를 유지하며 필요한 만큼 페이지를 만듭니다.";
+          ? "4-PAGE / 총 4장 분할. 짧은 입력은 빈 페이지 포함."
+          : "FIXED / 지정 규격 유지. 초과 데이터는 다음 페이지로 이월.";
   }
   document.querySelectorAll("[data-panel]").forEach(
     (button) =>
       (button.onclick = () => {
-        document
-          .querySelectorAll("[data-panel]")
-          .forEach((b) =>
-            b.setAttribute("aria-selected", String(b === button)),
-          );
+        document.querySelectorAll("[data-panel]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === button));
+          b.classList.toggle("active", b === button);
+        });
         document
           .querySelectorAll(".panel")
           .forEach(
@@ -195,7 +229,14 @@
           Math.max(Number(input.min), input.valueAsNumber),
         );
       } else value = input.value;
+      if (input.dataset.unit === "pt") value = (value * 4) / 3;
       state.config[input.dataset.config] = value;
+      if (input.dataset.config === "bubble") {
+        delete state.styles.dialogue.bubble;
+        syncStyle();
+      }
+      updateChrome();
+      renderThemes();
       updateOutputs();
       schedule();
       if (input.dataset.config === "fontFamily") {
@@ -206,7 +247,7 @@
           );
           schedule();
         } catch {
-          message("웹폰트를 불러오지 못해 기본 글꼴로 표시합니다.", true);
+          message("FONT / LOAD FAILED · 대체 글꼴 적용.", true);
         }
       }
     }),
@@ -216,7 +257,11 @@
     .forEach((input) =>
       input.addEventListener(
         "change",
-        () => (input.value = state.config[input.dataset.config]),
+        () =>
+          (input.value =
+            input.dataset.unit === "pt"
+              ? +(state.config[input.dataset.config] * 0.75).toFixed(2)
+              : state.config[input.dataset.config]),
       ),
     );
   document.querySelectorAll("[data-format]").forEach(
@@ -246,10 +291,7 @@
     const raw = $("raw-text").value.slice(0, 30000);
     const blocks = core.parse(raw, $("plain-type").value);
     if (blocks.length > 1500) {
-      message(
-        "문단은 최대 1,500개까지 사용할 수 있습니다. 내용을 나누어 주세요.",
-        true,
-      );
+      message("문단 한도 1,500개 초과. 입력 데이터를 분할하십시오.", true);
       return;
     }
     state.blocks = blocks;
@@ -266,7 +308,7 @@
   $("raw-text").addEventListener("paste", () => setTimeout(applyText, 0));
   function sample() {
     $("raw-text").value = SAMPLE;
-    if (!state.title) state.title = "어둠 속의 작은 신호";
+    if (!state.title) state.title = "MISSION LOG / 001";
     syncConfig();
     applyText();
   }
@@ -323,6 +365,13 @@
     $("speaker-list").replaceChildren(
       ...names.map((name) => new Option(name, name)),
     );
+    const selectedSpeaker = $("avatar-speaker").value;
+    $("avatar-speaker").replaceChildren(
+      new Option(names.length ? "인물 선택" : "인물명 지정 필요", ""),
+      ...names.map((name) => new Option(name, name)),
+    );
+    if (names.includes(selectedSpeaker))
+      $("avatar-speaker").value = selectedSpeaker;
     syncStyle();
   }
   function targetStyle(create = false) {
@@ -360,8 +409,8 @@
     $("style-align").value = style.align || "auto";
     $("target-note").textContent =
       $("style-target").value === "selected"
-        ? "선택한 문단에만 적용됩니다."
-        : "선택한 유형 또는 인물의 모든 문단에 적용됩니다.";
+        ? "선택 문단 적용."
+        : "선택 유형·인물 전체 적용.";
   }
   $("style-target").onchange = syncStyle;
   [
@@ -491,7 +540,7 @@
   };
   $("add-block").onclick = () => {
     if (state.blocks.length >= 1500)
-      return message("최대 1,500개 문단까지 추가할 수 있습니다.", true);
+      return message("문단 추가 한도 1,500개 도달.", true);
     const block = {
       id: `new-${Date.now()}`,
       type: "dialogue",
@@ -517,39 +566,306 @@
       schedule();
     }),
   );
-  const themes = {
-    signal: ["#081c21", "#52ded3", "#dfedee", "#afc4cc", "#edf6f6", "#12313b"],
-    paper: ["#f3eee5", "#8b7050", "#342e28", "#655e52", "#342e28", "#e7dfd2"],
-    midnight: [
-      "#171729",
-      "#aaa8ef",
-      "#eeecff",
-      "#bdbbd8",
-      "#eeecff",
-      "#2c2c48",
-    ],
-    rose: ["#f7e9ed", "#a0506e", "#553542", "#886675", "#553542", "#ecd4df"],
-  };
-  document.querySelectorAll("[data-theme]").forEach(
-    (button) =>
-      (button.onclick = () => {
-        const [background, accent, ink, narration, dialogue, bubble] =
-          themes[button.dataset.theme];
-        Object.assign(state.config, { background, accent, ink, bubble });
-        state.styles.narration.color = narration;
-        state.styles.dialogue.color = dialogue;
-        delete state.styles.dialogue.bubble;
-        syncConfig();
-        syncStyle();
-        schedule();
+  function updateChrome() {
+    const p = profile.palette(state.config.background),
+      c = state.config;
+    const variables = {
+      "--accent": c.accent,
+      "--studio-bg": c.backgroundEnd,
+      "--studio-panel": c.background,
+      "--text": p.ink,
+      "--muted": p.muted,
+      "--line": p.line,
+      "--control-bg": p.light ? "#f7f8fb" : "#070e14",
+      "--control-text": p.ink,
+    };
+    Object.entries(variables).forEach(([key, value]) =>
+      document.documentElement.style.setProperty(key, value),
+    );
+    document.body.classList.toggle("light-theme", p.light);
+  }
+  function renderThemes() {
+    $("theme-presets").replaceChildren(
+      ...profile.THEMES.map((theme) => {
+        const b = document.createElement("button");
+        const active =
+          state.config.theme === theme.id &&
+          state.config.background === theme.bg1 &&
+          state.config.backgroundEnd === theme.bg2 &&
+          state.config.accent === theme.accent;
+        b.className = "theme-preset" + (active ? " active" : "");
+        b.dataset.theme = theme.id;
+        b.setAttribute("aria-pressed", String(active));
+        b.setAttribute("aria-label", theme.label + " 테마 적용");
+        b.style.setProperty("--t-accent", theme.accent);
+        b.style.setProperty("--t-start", theme.bg1);
+        b.style.setProperty("--t-end", theme.bg2);
+        const mini = document.createElement("span");
+        mini.className = "theme-mini";
+        mini.setAttribute("aria-hidden", "true");
+        mini.append(
+          ...Array.from({ length: 3 }, () => document.createElement("i")),
+        );
+        const name = document.createElement("span");
+        name.className = "theme-name";
+        name.textContent = theme.name;
+        const label = document.createElement("small");
+        label.textContent = theme.label;
+        b.append(mini, name, label);
+        b.onclick = () => {
+          const p = profile.palette(theme.bg1);
+          Object.assign(state.config, {
+            theme: theme.id,
+            background: theme.bg1,
+            backgroundEnd: theme.bg2,
+            accent: theme.accent,
+            ink: p.ink,
+            bubble: p.surface,
+          });
+          state.styles.narration.color = p.text;
+          state.styles.dialogue.color = p.ink;
+          delete state.styles.narration.bubble;
+          delete state.styles.dialogue.bubble;
+          syncConfig();
+          syncStyle();
+          schedule();
+        };
+        return b;
       }),
-  );
+    );
+  }
+  let fontRequest = 0;
+  async function loadFont(config = state.config) {
+    const request = ++fontRequest;
+    $("font-status").textContent = "FONT / LOADING";
+    try {
+      await document.fonts.load(
+        `${config.fontItalic ? "italic " : ""}${config.fontSize}px ${config.fontFamily}`,
+        "한글 Aa 012",
+      );
+      if (request === fontRequest) {
+        $("font-status").textContent = "FONT / READY";
+        schedule();
+      }
+    } catch {
+      if (request === fontRequest)
+        $("font-status").textContent = "FONT / LOAD FAILED · 대체 글꼴 적용";
+    }
+  }
+  function renderFonts() {
+    $("font-options").replaceChildren(
+      ...allFonts().map((f) => {
+        const b = document.createElement("button"),
+          active = state.config.fontFamily === fontFamily(f);
+        b.className = "font-option" + (active ? " active" : "");
+        b.dataset.font = f.id;
+        b.setAttribute("aria-pressed", String(active));
+        const label = document.createElement("strong");
+        label.textContent = f.label;
+        const sample = document.createElement("small");
+        sample.textContent = f.sample;
+        sample.style.fontFamily = fontFamily(f);
+        if (f.italic) sample.style.fontStyle = "italic";
+        b.append(label, sample);
+        b.onclick = () => {
+          state.config.fontFamily = fontFamily(f);
+          state.config.fontItalic = !!f.italic;
+          syncMetadata();
+          renderFonts();
+          schedule();
+          loadFont();
+        };
+        return b;
+      }),
+    );
+  }
+  function syncMetadata() {
+    const m = state.metadata[$("meta-target").value];
+    $("meta-position").value = m.position;
+    $("meta-inherit").checked = m.inherit;
+    $("meta-custom").hidden = m.inherit;
+    $("meta-color").value = m.color;
+    $("meta-size").value = +(m.size * 0.75).toFixed(2);
+    $("meta-bold").checked = m.bold;
+    $("meta-label").checked = m.label;
+    $("meta-font").replaceChildren(
+      ...allFonts().map((f) => new Option(f.label, fontFamily(f))),
+    );
+    $("meta-font").value = m.fontFamily;
+  }
+  $("meta-target").onchange = syncMetadata;
+  for (const key of [
+    "position",
+    "inherit",
+    "color",
+    "size",
+    "bold",
+    "label",
+    "font",
+  ])
+    $("meta-" + key).addEventListener("input", () => {
+      const m = state.metadata[$("meta-target").value],
+        el = $("meta-" + key);
+      if (["inherit", "bold", "label"].includes(key)) m[key] = el.checked;
+      else if (key === "size") {
+        if (!Number.isFinite(el.valueAsNumber)) return;
+        m.size = (Math.min(36, Math.max(6, el.valueAsNumber)) * 4) / 3;
+      } else if (key === "font") {
+        const f = allFonts().find((f) => fontFamily(f) === el.value);
+        if (f) {
+          m.fontFamily = fontFamily(f);
+          m.fontItalic = !!f.italic;
+          loadFont({ ...state.config, ...m, fontSize: m.size });
+        }
+      } else m[key] = el.value;
+      $("meta-custom").hidden = m.inherit;
+      schedule();
+    });
+  function renderCustomFonts() {
+    const previous = $("custom-font-list").value;
+    $("custom-font-list").replaceChildren(
+      new Option(
+        customFonts.length ? "등록 폰트 선택" : "등록된 폰트 없음",
+        "",
+      ),
+      ...customFonts.map((f) => new Option(f.label, f.id)),
+    );
+    if (customFonts.some((f) => f.id === previous))
+      $("custom-font-list").value = previous;
+    $("remove-custom-font").disabled = !$("custom-font-list").value;
+    renderFonts();
+    syncMetadata();
+  }
+  async function registerFont(data, label, id = crypto.randomUUID()) {
+    if (!(data instanceof ArrayBuffer) || data.byteLength > 15 * 1024 * 1024)
+      throw new Error("글꼴 파일 한도 15MB 초과.");
+    if (!/^[a-zA-Z0-9-]{1,80}$/.test(id)) throw new Error("글꼴 식별자 오류.");
+    const existing = customFonts.find((f) => f.id === id);
+    if (existing) return existing;
+    if (customFonts.length >= 20) throw new Error("등록 글꼴 한도 20개 도달.");
+    const family = "ChamberUser_" + id.replaceAll("-", ""),
+      face = new FontFace(family, data);
+    await face.load();
+    document.fonts.add(face);
+    const item = {
+      id,
+      label: String(label).slice(0, 80),
+      family,
+      sample: "USER FONT",
+      data,
+      face,
+    };
+    customFonts.push(item);
+    return item;
+  }
+  $("custom-font-file").onchange = async () => {
+    const file = $("custom-font-file").files[0];
+    if (!file) return;
+    try {
+      if (
+        !/\.(woff2?|ttf|otf)$/i.test(file.name) ||
+        file.size > 15 * 1024 * 1024
+      )
+        throw new Error("지원 규격: WOFF / WOFF2 / TTF / OTF, 15MB 이하.");
+      const f = await registerFont(
+        await file.arrayBuffer(),
+        file.name.replace(/\.[^.]+$/, ""),
+      );
+      state.config.fontFamily = fontFamily(f);
+      state.config.fontItalic = false;
+      renderCustomFonts();
+      $("custom-font-list").value = f.id;
+      $("remove-custom-font").disabled = false;
+      $("custom-font-status").textContent =
+        `USER FONT / ${f.label} · 등록 완료.`;
+      schedule();
+    } catch (error) {
+      $("custom-font-status").textContent = "등록 실패. " + error.message;
+    }
+    $("custom-font-file").value = "";
+  };
+  $("custom-font-list").onchange = () =>
+    ($("remove-custom-font").disabled = !$("custom-font-list").value);
+  $("remove-custom-font").onclick = () => {
+    const i = customFonts.findIndex(
+      (f) => f.id === $("custom-font-list").value,
+    );
+    if (i < 0) return;
+    const f = customFonts[i];
+    document.fonts.delete(f.face);
+    customFonts.splice(i, 1);
+    if (state.config.fontFamily === fontFamily(f)) {
+      state.config.fontFamily = fontFamily(profile.FONTS[0]);
+      state.config.fontItalic = false;
+    }
+    Object.values(state.metadata).forEach((m) => {
+      if (m.fontFamily === fontFamily(f)) {
+        m.fontFamily = fontFamily(profile.FONTS[0]);
+        m.fontItalic = false;
+      }
+    });
+    renderCustomFonts();
+    schedule();
+    $("custom-font-status").textContent =
+      "USER FONT / 해제 완료. 저장된 프리셋은 별도 보관.";
+  };
+  $("help").onclick = () => $("help-dialog").showModal();
+  document
+    .querySelectorAll(".dialog-close")
+    .forEach((b) => (b.onclick = () => $("help-dialog").close()));
+  let avatarSequence = 0;
+  $("avatar-file").onchange = async () => {
+    const file = $("avatar-file").files[0],
+      name = $("avatar-speaker").value;
+    if (!file) return;
+    const request = ++avatarSequence;
+    try {
+      if (!name) throw new Error("대사 인물을 먼저 선택하십시오.");
+      if (
+        !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
+        file.size > 15 * 1024 * 1024
+      )
+        throw new Error("지원 이미지 규격: PNG / JPG / WEBP, 15MB 이하.");
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const decoded = await decodeImage(data);
+      if (request !== avatarSequence) return;
+      state.speakerImages[name] = decoded.image;
+      state.speakerData[name] = decoded.data;
+      state.config.showAvatars = true;
+      syncConfig();
+      schedule();
+      $("avatar-status").textContent = `${name} / IMAGE READY`;
+    } catch (error) {
+      $("avatar-status").textContent = error.message;
+    }
+    $("avatar-file").value = "";
+  };
+  $("avatar-speaker").onchange = () => {
+    $("avatar-status").textContent = state.speakerImages[
+      $("avatar-speaker").value
+    ]
+      ? "IMAGE / READY"
+      : "IMAGE / NOT LOADED";
+  };
+  $("remove-avatar").onclick = () => {
+    const name = $("avatar-speaker").value;
+    avatarSequence++;
+    delete state.speakerImages[name];
+    delete state.speakerData[name];
+    $("avatar-status").textContent = "IMAGE / REMOVED";
+    schedule();
+  };
   async function decodeImage(data) {
     const img = new Image();
     img.src = data;
     await img.decode();
     if (img.width * img.height > 40000000)
-      throw new Error("이미지는 4천만 픽셀 이하로 첨부해 주세요.");
+      throw new Error("이미지 해상도 초과. 4천만 픽셀 이하로 조정하십시오.");
     const ratio = Math.min(1, 2400 / Math.max(img.width, img.height));
     if (ratio < 1) {
       const reduced = document.createElement("canvas");
@@ -575,7 +891,7 @@
         !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
         file.size > 15 * 1024 * 1024
       )
-        throw new Error("15MB 이하의 PNG, JPG, WEBP 이미지를 선택해 주세요.");
+        throw new Error("첨부 규격: PNG / JPG / WEBP, 15MB 이하.");
       const data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
@@ -589,7 +905,7 @@
       $("image-name").textContent = file.name;
       render();
     } catch (error) {
-      message(error.message || "이미지를 읽지 못했습니다.", true);
+      message(error.message || "IMAGE / DECODE FAILED.", true);
     }
     $("background-file").value = "";
   };
@@ -597,7 +913,7 @@
     loadSequence++;
     state.backgroundImage = null;
     state.backgroundData = "";
-    $("image-name").textContent = "배경 이미지 없음";
+    $("image-name").textContent = "IMAGE LAYER / NOT LOADED";
     schedule();
   };
   $("previous-page").onclick = () => {
@@ -641,73 +957,28 @@
         (blob) =>
           blob
             ? resolve(blob)
-            : reject(
-                new Error(
-                  "PNG 생성에 실패했습니다. 크기를 줄여 다시 시도해 주세요.",
-                ),
-              ),
+            : reject(new Error("PNG 출력 실패. 규격 축소 후 재시도하십시오.")),
         "image/png",
       ),
     );
   }
-  // Uncompressed ZIP keeps already-compressed PNGs intact, without a CDN dependency.
-  const crcTable = Uint32Array.from({ length: 256 }, (_, n) => {
-    for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
-    return n >>> 0;
-  });
-  function crc32(bytes) {
-    let crc = 0xffffffff;
-    for (const b of bytes) crc = crcTable[(crc ^ b) & 255] ^ (crc >>> 8);
-    return (crc ^ 0xffffffff) >>> 0;
+  const downloadURLs = [];
+  function clearDownloads() {
+    downloadURLs.forEach((url) => URL.revokeObjectURL(url));
+    downloadURLs.length = 0;
+    $("download-list").replaceChildren();
+    $("download-results").hidden = true;
   }
-  async function zip(files) {
-    const chunks = [],
-      directory = [];
-    let offset = 0,
-      directorySize = 0;
-    for (const file of files) {
-      const bytes = new Uint8Array(await file.blob.arrayBuffer()),
-        name = new TextEncoder().encode(file.name),
-        crc = crc32(bytes);
-      const header = new Uint8Array(30 + name.length),
-        h = new DataView(header.buffer);
-      h.setUint32(0, 0x04034b50, true);
-      h.setUint16(4, 20, true);
-      h.setUint16(6, 0x800, true);
-      h.setUint16(12, 33, true);
-      h.setUint32(14, crc, true);
-      h.setUint32(18, bytes.length, true);
-      h.setUint32(22, bytes.length, true);
-      h.setUint16(26, name.length, true);
-      header.set(name, 30);
-      const central = new Uint8Array(46 + name.length),
-        d = new DataView(central.buffer);
-      d.setUint32(0, 0x02014b50, true);
-      d.setUint16(4, 20, true);
-      d.setUint16(6, 20, true);
-      d.setUint16(8, 0x800, true);
-      d.setUint16(14, 33, true);
-      d.setUint32(16, crc, true);
-      d.setUint32(20, bytes.length, true);
-      d.setUint32(24, bytes.length, true);
-      d.setUint16(28, name.length, true);
-      d.setUint32(42, offset, true);
-      central.set(name, 46);
-      chunks.push(header, file.blob);
-      directory.push(central);
-      offset += header.length + bytes.length;
-      directorySize += central.length;
-    }
-    const end = new Uint8Array(22),
-      view = new DataView(end.buffer);
-    view.setUint32(0, 0x06054b50, true);
-    view.setUint16(8, files.length, true);
-    view.setUint16(10, files.length, true);
-    view.setUint32(12, directorySize, true);
-    view.setUint32(16, offset, true);
-    return new Blob([...chunks, ...directory, end], {
-      type: "application/zip",
-    });
+  function addDownload(blob, name, index) {
+    const url = URL.createObjectURL(blob);
+    downloadURLs.push(url);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.textContent = `PAGE ${String(index + 1).padStart(2, "0")} / PNG ↓`;
+    $("download-list").append(link);
+    $("download-results").hidden = false;
+    link.click();
   }
   async function exportImages(all) {
     if (busy || !state.blocks.length) return;
@@ -716,22 +987,33 @@
     busy = true;
     setExportEnabled(false);
     const snapshot = {
-      ...structuredClone({ ...state, backgroundImage: null }),
+      ...structuredClone({
+        ...state,
+        backgroundImage: null,
+        speakerImages: null,
+      }),
       backgroundImage: state.backgroundImage,
+      speakerImages: { ...state.speakerImages },
     };
     const filename = safeName(),
       currentPage = page,
       run = ++exportSequence;
     try {
-      message("글꼴과 PNG를 준비하고 있습니다…");
+      message("PNG OUTPUT / PREPARING");
       await document.fonts.load(
-        `${snapshot.config.fontSize}px ${snapshot.config.fontFamily}`,
+        `${snapshot.config.fontItalic ? "italic " : ""}${snapshot.config.fontSize}px ${snapshot.config.fontFamily}`,
         "가나다 ABC",
       );
       await document.fonts.load(
-        `bold ${snapshot.config.fontSize}px ${snapshot.config.fontFamily}`,
+        `${snapshot.config.fontItalic ? "italic " : ""}bold ${snapshot.config.fontSize}px ${snapshot.config.fontFamily}`,
         "가나다 ABC",
       );
+      for (const m of Object.values(snapshot.metadata))
+        if (!m.inherit)
+          await document.fonts.load(
+            `${m.fontItalic ? "italic " : ""}${m.bold ? "bold " : ""}${m.size}px ${m.fontFamily}`,
+            "한글 Aa 012",
+          );
       await document.fonts.ready;
       const output = core.layout(measure, snapshot),
         target = document.createElement("canvas");
@@ -747,37 +1029,35 @@
           `${filename}_${String(currentPage + 1).padStart(2, "0")}.png`,
         );
       } else {
-        const files = [];
+        clearDownloads();
         let byteCount = 0;
         for (let i = 0; i < output.pages.length; i++) {
-          message(`PNG 생성 중 · ${i + 1} / ${output.pages.length}`);
+          message(`PNG OUTPUT / ${i + 1} OF ${output.pages.length}`);
           core.draw(target, snapshot, output, i);
           const blob = await toPNG(target);
           byteCount += blob.size;
           if (byteCount > 200 * 1024 * 1024)
             throw new Error(
-              "전체 파일이 200MB를 넘습니다. 현재 페이지별로 저장하거나 크기를 줄여 주세요.",
+              "출력 한도 200MB 초과. 남은 페이지는 현재 페이지 저장으로 출력하십시오.",
             );
-          files.push({
-            name: `${filename}_${String(i + 1).padStart(2, "0")}.png`,
+          addDownload(
             blob,
-          });
-          await new Promise((resolve) => setTimeout(resolve, 0));
+            `${filename}_${String(i + 1).padStart(2, "0")}.png`,
+            i,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
-        download(
-          await zip(files),
-          `${filename}_${output.pages.length}pages.zip`,
-        );
       }
       target.width = 1;
       target.height = 1;
       if (run === exportSequence)
-        message("저장 파일을 준비했습니다. 브라우저 다운로드를 확인해 주세요.");
+        message(
+          all
+            ? "PNG 출력 요청 완료. 차단된 파일은 OUTPUT 목록에서 개별 저장하십시오."
+            : "PNG 출력 요청 완료.",
+        );
     } catch (error) {
-      message(
-        error.message || "저장에 실패했습니다. 다시 시도해 주세요.",
-        true,
-      );
+      message(error.message || "PNG OUTPUT / FAILED. 재시도하십시오.", true);
     } finally {
       busy = false;
       setExportEnabled(!!result);
@@ -786,22 +1066,114 @@
   $("export-current").onclick = () => exportImages(false);
   $("quick-export").onclick = () => exportImages(false);
   $("export-all").onclick = () => exportImages(true);
-  function projectData() {
-    const { backgroundImage, ...data } = state;
+  // User presets store presentation settings only. No excerpt text or attribution is persisted.
+  const dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open("chamber-extract-presets", 1);
+    request.onupgradeneeded = () =>
+      request.result.createObjectStore("presets", { keyPath: "id" });
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    request.onblocked = () =>
+      reject(new Error("프리셋 저장소 사용 중. 다른 탭을 종료하십시오."));
+  });
+  async function presetTransaction(mode, action) {
+    const db = await dbPromise;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("presets", mode),
+        request = action(tx.objectStore("presets"));
+      tx.oncomplete = () => resolve(request.result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("저장 중단"));
+    });
+  }
+  function presetMessage(text, error = false) {
+    $("preset-status").textContent = text;
+    $("preset-status").classList.toggle("error", error);
+  }
+  function presetFailure(error) {
+    presetMessage(
+      "프리셋 처리 실패. 저장 공간 또는 브라우저 저장 권한 확인. " +
+        (error?.message || ""),
+      true,
+    );
+  }
+  function presetData(id, name) {
     return {
+      id,
+      name,
       version: 1,
-      ...data,
-      rawText: $("raw-text").value,
-      plainType: $("plain-type").value,
+      updated: Date.now(),
+      config: structuredClone(state.config),
+      styles: structuredClone(state.styles),
+      backgroundData: state.backgroundData,
+      metadata: structuredClone(state.metadata),
+      customFonts: customFonts
+        .filter(
+          (f) =>
+            state.config.fontFamily === fontFamily(f) ||
+            Object.values(state.metadata).some(
+              (m) => !m.inherit && m.fontFamily === fontFamily(f),
+            ),
+        )
+        .map(({ id, label, data }) => ({ id, label, data })),
     };
   }
-  $("save-project").onclick = () =>
-    download(
-      new Blob([JSON.stringify(projectData(), null, 2)], {
-        type: "application/json",
-      }),
-      `${safeName()}.json`,
+  async function refreshPresets(selectId = $("saved-presets").value) {
+    const presets = await presetTransaction("readonly", (store) =>
+      store.getAll(),
     );
+    presets.sort((a, b) => b.updated - a.updated);
+    $("saved-presets").replaceChildren(
+      new Option(presets.length ? "프리셋 선택" : "저장된 프리셋 없음", ""),
+      ...presets.map((p) => new Option(p.name, p.id)),
+    );
+    if (presets.some((p) => p.id === selectId))
+      $("saved-presets").value = selectId;
+    presetSelection();
+  }
+  function presetSelection() {
+    const chosen = !!$("saved-presets").value;
+    ["load-preset", "overwrite-preset", "delete-preset"].forEach(
+      (id) => ($(id).disabled = !chosen),
+    );
+    if (chosen)
+      $("preset-name").value =
+        $("saved-presets").selectedOptions[0].textContent;
+  }
+  $("saved-presets").onchange = presetSelection;
+  let presetBusy = false;
+  async function withPreset(action) {
+    if (presetBusy) return;
+    presetBusy = true;
+    ["save-preset", "load-preset", "overwrite-preset", "delete-preset"].forEach(
+      (id) => ($(id).disabled = true),
+    );
+    try {
+      await action();
+    } catch (error) {
+      presetFailure(error);
+    } finally {
+      presetBusy = false;
+      $("save-preset").disabled = false;
+      presetSelection();
+    }
+  }
+  async function savePreset(overwrite) {
+    const name = $("preset-name").value.trim();
+    if (!name) {
+      presetMessage("프리셋 명칭을 입력하십시오.", true);
+      return;
+    }
+    const id = overwrite ? $("saved-presets").value : crypto.randomUUID();
+    if (!id) return;
+    await presetTransaction("readwrite", (store) =>
+      store.put(presetData(id, name)),
+    );
+    await refreshPresets(id);
+    presetMessage(`PRESET / ${name} · 저장 완료. 원문·출처 제외.`);
+  }
+  $("save-preset").onclick = () => withPreset(() => savePreset(false));
+  $("overwrite-preset").onclick = () => withPreset(() => savePreset(true));
   const color = (value) =>
     typeof value === "string" && /^#[\da-f]{6}$/i.test(value);
   function cleanStyle(style) {
@@ -812,153 +1184,134 @@
         clean[key] = style[key];
     for (const key of ["bold", "italic", "strike"])
       if (typeof style[key] === "boolean") clean[key] = style[key];
-    if (["left", "right", "auto"].includes(style.align))
+    if (["auto", "left", "right"].includes(style.align))
       clean.align = style.align;
     return clean;
   }
-  async function validateProject(data) {
-    if (
-      data.version !== 1 ||
-      !Array.isArray(data.blocks) ||
-      data.blocks.length > 1500
-    )
-      throw new Error("지원하지 않는 편집 파일입니다.");
-    let total = 0;
-    const blocks = data.blocks.map((b, index) => {
-      if (!b || typeof b.text !== "string")
-        throw new Error("문단 데이터가 올바르지 않습니다.");
-      total += b.text.length;
-      const marks = Array.isArray(b.marks)
-        ? b.marks
-            .slice(0, 500)
-            .filter(
-              (m) =>
-                m &&
-                Number.isInteger(m.start) &&
-                Number.isInteger(m.end) &&
-                m.start >= 0 &&
-                m.end <= b.text.length &&
-                m.end > m.start,
-            )
-            .map((m) => ({
-              start: m.start,
-              end: m.end,
-              style: cleanStyle(m.style),
-            }))
-        : [];
-      return {
-        id: `b${index + 1}`,
-        text: b.text,
-        type: b.type === "narration" ? "narration" : "dialogue",
-        speaker: typeof b.speaker === "string" ? b.speaker.slice(0, 24) : "",
-        style: cleanStyle(b.style),
-        marks,
-      };
-    });
-    if (total > 30000)
-      throw new Error("발췌 내용은 최대 30,000자까지 사용할 수 있습니다.");
-    const config = { ...defaultConfig },
-      inputConfig = data.config || {};
-    document.querySelectorAll("[data-config]").forEach((input) => {
-      const key = input.dataset.config,
-        value = inputConfig[key];
-      if (input.type === "number" || input.type === "range") {
-        if (typeof value === "number" && Number.isFinite(value))
-          config[key] = Math.min(+input.max, Math.max(+input.min, value));
-      } else if (input.type === "color") {
+  function cleanPresetConfig(input) {
+    const config = { ...defaultConfig };
+    document.querySelectorAll("[data-config]").forEach((el) => {
+      const key = el.dataset.config,
+        value = input?.[key];
+      if (el.type === "number" || el.type === "range") {
+        const factor = el.dataset.unit === "pt" ? 4 / 3 : 1;
+        if (Number.isFinite(value))
+          config[key] = Math.min(
+            +el.max * factor,
+            Math.max(+el.min * factor, value),
+          );
+      } else if (el.type === "color") {
         if (color(value)) config[key] = value;
-      } else if (input.type === "checkbox") {
+      } else if (el.type === "checkbox") {
         if (typeof value === "boolean") config[key] = value;
       } else if (
-        Array.from(input.options).some((option) => option.value === value)
+        Array.from(el.options).some((option) => option.value === value)
       )
         config[key] = value;
     });
+    const f =
+      allFonts().find((f) => fontFamily(f) === input?.fontFamily) ||
+      profile.FONTS[0];
+    config.fontFamily = fontFamily(f);
+    config.fontItalic = !!f.italic;
+    config.format = input?.format === "chat" ? "chat" : "novel";
+    config.theme = profile.THEMES.some((t) => t.id === input?.theme)
+      ? input.theme
+      : "sirius";
+    if (color(input?.bubble)) config.bubble = input.bubble;
     config.width = Math.round(config.width);
     config.height = Math.round(config.height);
-    if (inputConfig.format === "chat") config.format = "chat";
-    if (color(inputConfig.bubble)) config.bubble = inputConfig.bubble;
-    const imported = {
-      config,
-      blocks,
-      styles: {
+    return config;
+  }
+  $("load-preset").onclick = () =>
+    withPreset(async () => {
+      const id = $("saved-presets").value;
+      if (!id) return;
+      const preset = await presetTransaction("readonly", (store) =>
+        store.get(id),
+      );
+      if (!preset || preset.version !== 1)
+        throw new Error("프리셋 형식 불일치.");
+      for (const saved of (preset.customFonts || []).slice(0, 20))
+        await registerFont(saved.data, saved.label, saved.id);
+      const metadata = defaultMetadata();
+      for (const [key, m] of Object.entries(metadata)) {
+        const input = preset.metadata?.[key];
+        if (!input) continue;
+        if (["tl", "tr", "bl", "br", "hidden"].includes(input.position))
+          m.position = input.position;
+        for (const k of ["inherit", "bold", "label"])
+          if (typeof input[k] === "boolean") m[k] = input[k];
+        if (color(input.color)) m.color = input.color;
+        if (Number.isFinite(input.size))
+          m.size = Math.min(48, Math.max(8, input.size));
+        const f = allFonts().find((f) => fontFamily(f) === input.fontFamily);
+        if (f) {
+          m.fontFamily = fontFamily(f);
+          m.fontItalic = !!f.italic;
+        }
+      }
+      const config = cleanPresetConfig(preset.config);
+      const styles = {
         narration: {
           ...defaultStyles.narration,
-          ...cleanStyle(data.styles?.narration),
+          ...cleanStyle(preset.styles?.narration),
         },
         dialogue: {
           ...defaultStyles.dialogue,
-          ...cleanStyle(data.styles?.dialogue),
+          ...cleanStyle(preset.styles?.dialogue),
         },
-      },
-      speakers: Object.create(null),
-      backgroundImage: null,
-      backgroundData: "",
-    };
-    for (const key of ["title", "creator", "character", "platform", "source"])
-      imported[key] =
-        typeof data[key] === "string"
-          ? data[key].slice(0, key === "source" ? 300 : 100)
-          : "";
-    for (const name of new Set(blocks.map((b) => b.speaker).filter(Boolean)))
-      if (data.speakers && Object.hasOwn(data.speakers, name))
-        imported.speakers[name] = cleanStyle(data.speakers[name]);
-    if (data.backgroundData) {
-      if (
-        typeof data.backgroundData !== "string" ||
-        data.backgroundData.length > 40 * 1024 * 1024 ||
-        !/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(
-          data.backgroundData,
+      };
+      const sequence = ++loadSequence;
+      let backgroundImage = null,
+        backgroundData = "";
+      if (preset.backgroundData) {
+        if (
+          typeof preset.backgroundData !== "string" ||
+          preset.backgroundData.length > 40 * 1024 * 1024 ||
+          !/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(
+            preset.backgroundData,
+          )
         )
-      )
-        throw new Error("배경 이미지 데이터가 올바르지 않습니다.");
-      const decoded = await decodeImage(data.backgroundData);
-      imported.backgroundImage = decoded.image;
-      imported.backgroundData = decoded.data;
-    }
-    if (blocks.length) core.layout(measure, imported);
-    return imported;
-  }
-  $("load-project").onchange = async () => {
-    const file = $("load-project").files[0];
-    if (!file) return;
-    const sequence = ++loadSequence;
-    try {
-      if (file.size > 45 * 1024 * 1024)
-        throw new Error("편집 파일은 45MB 이하로 불러와 주세요.");
-      const data = JSON.parse(await file.text()),
-        imported = await validateProject(data);
+          throw new Error("배경 데이터 손상.");
+        const decoded = await decodeImage(preset.backgroundData);
+        backgroundImage = decoded.image;
+        backgroundData = decoded.data;
+      }
       if (sequence !== loadSequence) return;
-      state = imported;
-      selected = state.blocks[0]?.id || null;
-      page = 0;
-      $("raw-text").value =
-        typeof data.rawText === "string"
-          ? data.rawText.slice(0, 30000)
-          : state.blocks.map((b) => b.text).join("\n");
-      $("plain-type").value =
-        data.plainType === "narration" ? "narration" : "dialogue";
-      $("image-name").textContent = state.backgroundImage
-        ? "편집 파일의 배경 이미지"
-        : "배경 이미지 없음";
-      updateCount();
+      Object.assign(state, {
+        config,
+        styles,
+        metadata,
+        backgroundImage,
+        backgroundData,
+      });
+      renderCustomFonts();
+      $("image-name").textContent = backgroundImage
+        ? "PRESET / IMAGE LOADED"
+        : "IMAGE LAYER / NOT LOADED";
       syncConfig();
-      renderBlocks();
-      renderStyleTargets();
+      syncStyle();
       render();
-      await document.fonts.load(
-        `${state.config.fontSize}px ${state.config.fontFamily}`,
-        "가나다 ABC",
+      loadFont();
+      presetMessage(
+        `PRESET / ${preset.name} · 적용 완료. 원문·출처 유지. 개별 서식 우선.`,
       );
-      schedule();
-    } catch (error) {
-      message(`파일을 불러오지 못했습니다. ${error.message}`, true);
-    }
-    $("load-project").value = "";
-  };
+    });
+  $("delete-preset").onclick = () =>
+    withPreset(async () => {
+      const id = $("saved-presets").value;
+      if (!id) return;
+      await presetTransaction("readwrite", (store) => store.delete(id));
+      await refreshPresets("");
+      $("preset-name").value = "";
+      presetMessage("PRESET / 삭제 완료.");
+    });
   document.fonts.addEventListener("loadingdone", schedule);
   syncConfig();
   renderBlocks();
   renderStyleTargets();
   render();
+  loadFont();
+  refreshPresets().catch(presetFailure);
 })();

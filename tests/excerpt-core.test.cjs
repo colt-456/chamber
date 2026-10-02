@@ -142,3 +142,42 @@ test("speaker and block overrides take priority over the type style", () => {
     color: "#00ff00",
   });
 });
+
+test("corner credits reserve both bands, retain custom styles, and can be hidden", () => {
+  const s = state("ALPHA: " + "본문 ".repeat(100), "fixed");
+  s.metadata = Object.fromEntries(
+    ["title", "creator", "character", "platform", "source"].map((key, i) =>
+      [key, { position: ["tl", "tr", "bl", "br", "hidden"][i], inherit: false,
+        size: 16, color: "#ff0000", fontFamily: "test-font", label: false }])
+  );
+  const result = core.layout(context, s);
+  for (const position of ["tl", "tr", "bl", "br"]) {
+    assert.equal(result.metadata[position].length, 1);
+    const item = result.metadata[position][0];
+    assert.equal(item.config.fontSize, 16);
+    assert.equal(item.style.color, "#ff0000");
+    assert.ok(item.lines.every(line => line.width <= (s.config.width - 2*s.config.padding - 24)/2));
+  }
+  assert.ok(!Object.values(result.metadata).flat().some(item => item.key === "source"));
+  assert.ok(result.header > s.config.padding && result.footer > s.config.padding);
+  assert.equal(textOf(result.pages), s.blocks.map(b => b.text).join(""));
+  for (const m of Object.values(s.metadata)) m.position = "hidden";
+  const hidden = core.layout(context, s);
+  assert.equal(hidden.header, s.config.padding);
+  assert.equal(hidden.footer, s.config.padding);
+  assert.equal(Object.values(hidden.metadata).flat().length, 0);
+});
+
+test("avatar space is reserved only for enabled chat speakers with an image", () => {
+  const s = state("ALPHA: " + "문장 ".repeat(120));
+  s.config.format = "chat";
+  s.config.showAvatars = true;
+  s.speakerImages = { ALPHA: {width: 100, height: 100} };
+  const withAvatar = core.layout(context, s);
+  assert.ok(withAvatar.pages.flat().every(row => row.avatar === 48));
+  s.config.showAvatars = false;
+  const without = core.layout(context, s);
+  assert.ok(without.pages.flat().every(row => row.avatar === 0));
+  assert.ok(withAvatar.pages[0][0].textWidth < without.pages[0][0].textWidth);
+  assert.equal(textOf(withAvatar.pages), textOf(without.pages));
+});

@@ -69,7 +69,7 @@
     return blocks;
   }
   function font(style, config) {
-    return `${style.italic ? "italic " : ""}${style.bold ? "700" : "400"} ${config.fontSize}px ${config.fontFamily}`;
+    return `${style.italic || config.fontItalic ? "italic " : ""}${style.bold ? "700" : "400"} ${config.fontSize}px ${config.fontFamily}`;
   }
   function blockStyle(block, state) {
     return {
@@ -117,7 +117,7 @@
     for (const row of rows) {
       if (row.height > capacity)
         throw new Error(
-          "페이지 높이가 한 줄보다 작습니다. 높이를 늘리거나 여백·글자 크기를 줄여 주세요.",
+          "본문 영역 부족. 페이지 높이 증가 또는 여백·글자 크기 축소 필요.",
         );
       if (current.length && height + row.height > capacity) {
         pages.push(current);
@@ -160,37 +160,77 @@
     const c = state.config;
     const contentWidth = c.width - c.padding * 2;
     if (contentWidth < Math.max(100, c.fontSize * 3))
-      throw new Error(
-        "가로 여백이 너무 넓습니다. 너비를 늘리거나 여백을 줄여 주세요.",
-      );
-    const small = { ...c, fontSize: 13, widthScale: 1, letterSpacing: 0 };
-    const title = state.title
-      ? wrap(
-          ctx,
-          state.title,
-          contentWidth,
-          { ...small, fontSize: 22 },
-          { color: c.ink, bold: true },
-        )
-      : [];
-    const credits = [
-      ["제작자", state.creator],
-      ["캐릭터", state.character],
-      ["플랫폼", state.platform],
-      ["출처", state.source],
-    ]
-      .filter(([, value]) => value.trim())
-      .flatMap(([key, value]) =>
-        wrap(ctx, `${key} · ${value}`, contentWidth, small, { color: c.ink }),
-      );
-    const header = c.padding + 28 + title.length * 31 + (title.length ? 20 : 0);
+      throw new Error("가로 본문 영역 부족. 너비 증가 또는 여백 축소 필요.");
+    const metadata = { tl: [], tr: [], bl: [], br: [] };
+    const labels = {
+      title: "제목",
+      creator: "제작자",
+      character: "캐릭터",
+      platform: "플랫폼",
+      source: "출처",
+    };
+    for (const key of Object.keys(labels)) {
+      const value = String(state[key] || "").trim();
+      const m = state.metadata?.[key] || {
+        position: key === "title" ? "tl" : "bl",
+        inherit: true,
+        label: key !== "title",
+      };
+      if (!value || m.position === "hidden") continue;
+      const position = ["tl", "tr", "bl", "br"].includes(m.position)
+        ? m.position
+        : "bl";
+      const config = m.inherit
+        ? { ...c }
+        : {
+            ...c,
+            fontFamily: m.fontFamily || c.fontFamily,
+            fontItalic: !!m.fontItalic,
+            fontSize: m.size || 14,
+            widthScale: 1,
+            letterSpacing: 0,
+          };
+      const text = (m.label ? labels[key] + " · " : "") + value;
+      metadata[position].push({
+        key,
+        text,
+        config,
+        style: {
+          color: m.inherit ? state.styles.narration.color : m.color || c.ink,
+          bold: !!m.bold,
+        },
+      });
+    }
+    const heights = {};
+    for (const position of Object.keys(metadata)) {
+      const both =
+        metadata[position[0] + "l"].length &&
+        metadata[position[0] + "r"].length;
+      const width = both ? (contentWidth - 24) / 2 : contentWidth;
+      let height = 0;
+      for (const item of metadata[position]) {
+        item.lines = wrap(ctx, item.text, width, item.config, item.style);
+        item.lineHeight = item.config.fontSize * 1.5;
+        item.offset = height;
+        height += item.lines.length * item.lineHeight + 10;
+      }
+      heights[position] = Math.max(0, height - 10);
+    }
+    const topHeight = Math.max(heights.tl, heights.tr),
+      bottomHeight = Math.max(heights.bl, heights.br);
+    const header = c.padding + (topHeight ? topHeight + 24 : 0);
     const footer =
-      c.padding + 28 + credits.length * 21 + (credits.length ? 14 : 0);
+      c.padding +
+      (bottomHeight ? bottomHeight + 24 : 0) +
+      (c.pageNumbers ? 20 : 0);
     const rows = [];
     for (const block of state.blocks) {
       const style = blockStyle(block, state);
       const chat = c.format === "chat" && block.type === "dialogue";
-      const textWidth = contentWidth * (chat ? 0.86 : 1) - (chat ? 36 : 0);
+      const avatar =
+        chat && c.showAvatars && state.speakerImages?.[block.speaker] ? 48 : 0;
+      const textWidth =
+        (contentWidth - avatar) * (chat ? 0.86 : 1) - (chat ? 36 : 0);
       const lines = wrap(ctx, block.text, textWidth, c, style, block.marks);
       lines.forEach((line, index) => {
         const first = index === 0,
@@ -214,13 +254,14 @@
           bottom,
           height: c.fontSize * c.lineHeight + top + bottom,
           textWidth,
+          avatar,
         });
       });
     }
     const overhead = header + footer;
     const maxHeight = 12000;
     if (overhead > maxHeight - 200)
-      throw new Error("제목 또는 출처가 너무 깁니다. 길이를 줄여 주세요.");
+      throw new Error("제목·출처 길이 초과. 입력 축소 필요.");
     const total = rows.reduce((n, row) => n + row.height, 0);
     let pageHeight, pages;
     if (c.pageMode === "auto") {
@@ -234,7 +275,7 @@
         high = maxHeight - overhead;
       if (splitRows(rows, high).length > 4)
         throw new Error(
-          "4장에 담기에는 내용이 너무 깁니다. 너비를 늘리거나 글자 크기를 줄여 주세요.",
+          "4장 출력 한도 초과. 너비 증가 또는 글자 크기 축소 필요.",
         );
       for (let i = 0; i < 24; i++) {
         const middle = (low + high) / 2;
@@ -242,30 +283,26 @@
         else low = middle;
       }
       pageHeight = Math.ceil(Math.max(c.height, high + overhead));
-      if (pageHeight > maxHeight)
-        throw new Error("출력 높이는 12,000px 이하로 설정해 주세요.");
+      if (pageHeight > maxHeight) throw new Error("출력 높이 상한: 12,000px.");
       pages = splitFour(rows, pageHeight - overhead);
     } else {
       pageHeight = c.height;
       if (pageHeight - overhead < c.fontSize * c.lineHeight + 50)
         throw new Error(
-          "본문 공간이 부족합니다. 높이를 늘리거나 여백·제목·출처를 줄여 주세요.",
+          "본문 공간 부족. 높이 증가 또는 여백·제목·출처 축소 필요.",
         );
       pages = splitRows(rows, pageHeight - overhead);
     }
     if (pages.length > 100)
-      throw new Error(
-        "100장을 초과했습니다. 페이지 높이를 늘리거나 내용을 나누어 주세요.",
-      );
+      throw new Error("100장 출력 한도 초과. 높이 증가 또는 입력 분할 필요.");
     return {
       pages,
       width: c.width,
       height: pageHeight,
       header,
       footer,
-      title,
-      credits,
-      small,
+      metadata,
+      metadataHeights: heights,
       totalRows: rows.length,
     };
   }
@@ -305,7 +342,15 @@
     canvas.width = result.width;
     canvas.height = result.height;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = c.background;
+    const background = ctx.createLinearGradient(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+    background.addColorStop(0, c.background);
+    background.addColorStop(1, c.backgroundEnd || c.background);
+    ctx.fillStyle = background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (state.backgroundImage) {
       const img = state.backgroundImage;
@@ -342,20 +387,34 @@
       ctx.stroke();
       ctx.restore();
     }
-    ctx.strokeStyle = c.accent;
-    ctx.globalAlpha = 0.4;
-    ctx.strokeRect(18.5, 18.5, canvas.width - 37, canvas.height - 37);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = c.accent;
-    ctx.fillRect(18, 18, 42, 3);
-    ctx.font = `11px ${c.fontFamily}`;
-    ctx.fillText("TXT.EXTRACT / CHAMBER", c.padding, c.padding + 8);
-    result.title.forEach((line, i) =>
-      drawLine(ctx, line, c.padding, c.padding + 49 + i * 31, {
-        ...result.small,
-        fontSize: 22,
-      }),
-    );
+    if (c.frameStyle !== "none")
+      drawHUDFrame(ctx, canvas.width, canvas.height, c.accent);
+    for (const [position, items] of Object.entries(result.metadata)) {
+      const top =
+        position[0] === "t"
+          ? c.padding
+          : canvas.height -
+            c.padding -
+            result.metadataHeights[position] -
+            (c.pageNumbers ? 20 : 0);
+      for (const item of items)
+        item.lines.forEach((line, i) => {
+          const x =
+            position[1] === "r"
+              ? canvas.width - c.padding - line.width
+              : c.padding;
+          drawLine(
+            ctx,
+            line,
+            x,
+            top +
+              item.offset +
+              i * item.lineHeight +
+              item.config.fontSize * 0.92,
+            item.config,
+          );
+        });
+    }
     let y = result.header;
     const rows = result.pages[pageIndex];
     const speakerNames = [
@@ -382,15 +441,70 @@
       );
       const left =
         c.padding +
-        (row.chat && alignRight ? c.width - c.padding * 2 - bubbleWidth : 0);
+        (row.chat && alignRight
+          ? c.width - c.padding * 2 - bubbleWidth - (row.avatar || 0)
+          : row.avatar || 0);
       if (row.chat) {
         ctx.fillStyle = row.style.bubble || c.bubble;
         const gap = group[group.length - 1].last
           ? c.paragraphGap + c.dialogueGap
           : 0;
-        ctx.beginPath();
-        ctx.roundRect(left, y, bubbleWidth, Math.max(1, groupHeight - gap), 12);
+        const panelHeight = Math.max(1, groupHeight - gap);
+        if (c.bubbleShape === "round") {
+          ctx.beginPath();
+          ctx.roundRect(left, y, bubbleWidth, panelHeight, 12);
+        } else
+          panelPath(
+            ctx,
+            left,
+            y,
+            bubbleWidth,
+            panelHeight,
+            Math.min(10, panelHeight / 3),
+          );
         ctx.fill();
+        if (c.bubbleShape !== "round") {
+          ctx.save();
+          ctx.strokeStyle = c.accent;
+          ctx.globalAlpha = 0.55;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = c.accent;
+          ctx.fillRect(
+            alignRight ? left + bubbleWidth - 30 : left + 10,
+            y,
+            20,
+            2,
+          );
+          ctx.restore();
+        }
+        if (row.avatar && row.first) {
+          const avatar = state.speakerImages?.[row.speaker];
+          if (avatar) {
+            const ax = alignRight ? c.width - c.padding - 36 : c.padding;
+            ctx.save();
+            panelPath(ctx, ax, y, 36, 36, 6);
+            ctx.clip();
+            const side = Math.min(avatar.width, avatar.height);
+            ctx.drawImage(
+              avatar,
+              (avatar.width - side) / 2,
+              (avatar.height - side) / 2,
+              side,
+              side,
+              ax,
+              y,
+              36,
+              36,
+            );
+            ctx.restore();
+            panelPath(ctx, ax, y, 36, 36, 6);
+            ctx.strokeStyle = c.accent;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
       }
       for (const item of group) {
         const x = row.chat ? left + 18 : c.padding;
@@ -404,28 +518,79 @@
       }
       i = end;
     }
-    const footY = canvas.height - result.footer;
-    ctx.strokeStyle = c.accent;
-    ctx.globalAlpha = 0.3;
+    if (c.pageNumbers) {
+      ctx.fillStyle = c.ink;
+      ctx.font = `10px ${c.fontFamily}`;
+      ctx.textAlign = "right";
+      ctx.fillText(
+        `${pageIndex + 1} / ${result.pages.length}`,
+        canvas.width - c.padding,
+        canvas.height - c.padding + 8,
+      );
+      ctx.textAlign = "left";
+    }
+  }
+  function panelPath(ctx, x, y, w, h, cut) {
     ctx.beginPath();
-    ctx.moveTo(c.padding, footY + 8);
-    ctx.lineTo(canvas.width - c.padding, footY + 8);
+    ctx.moveTo(x + cut, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + h - cut);
+    ctx.lineTo(x + w - cut, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + cut);
+    ctx.closePath();
+  }
+  function drawHUDFrame(ctx, w, h, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1;
+    // Open rails, clipped corners and calibration ticks, with no tool branding.
+    ctx.globalAlpha = 0.38;
+    ctx.beginPath();
+    ctx.moveTo(20, 75);
+    ctx.lineTo(20, 38);
+    ctx.lineTo(38, 20);
+    ctx.lineTo(w * 0.35, 20);
+    ctx.moveTo(w * 0.65, 20);
+    ctx.lineTo(w - 32, 20);
+    ctx.lineTo(w - 20, 32);
+    ctx.lineTo(w - 20, h * 0.3);
+    ctx.moveTo(w - 20, h * 0.7);
+    ctx.lineTo(w - 20, h - 38);
+    ctx.lineTo(w - 38, h - 20);
+    ctx.lineTo(w * 0.65, h - 20);
+    ctx.moveTo(w * 0.35, h - 20);
+    ctx.lineTo(32, h - 20);
+    ctx.lineTo(20, h - 32);
+    ctx.lineTo(20, h - 75);
     ctx.stroke();
-    ctx.globalAlpha = 1;
-    result.credits.forEach((line, i) =>
-      drawLine(ctx, line, c.padding, footY + 33 + i * 21, result.small),
-    );
-    ctx.fillStyle = c.accent;
-    ctx.font = `10px ${c.fontFamily}`;
-    const baseline = canvas.height - c.padding + 8;
-    ctx.fillText("MADE BY @COLT", c.padding, baseline);
-    ctx.textAlign = "right";
-    ctx.fillText(
-      `${String(pageIndex + 1).padStart(2, "0")} / ${String(result.pages.length).padStart(2, "0")}`,
-      canvas.width - c.padding,
-      baseline,
-    );
-    ctx.textAlign = "left";
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(20, 49);
+    ctx.lineTo(20, 37);
+    ctx.lineTo(37, 20);
+    ctx.lineTo(65, 20);
+    ctx.moveTo(w - 65, h - 20);
+    ctx.lineTo(w - 37, h - 20);
+    ctx.lineTo(w - 20, h - 37);
+    ctx.lineTo(w - 20, h - 49);
+    ctx.stroke();
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < 7; i++) {
+      const y = h / 2 + (i - 3) * 8;
+      ctx.moveTo(17, y);
+      ctx.lineTo(i === 3 ? 27 : 22, y);
+      ctx.moveTo(w - 17, y);
+      ctx.lineTo(w - (i === 3 ? 27 : 22), y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 0.75;
+    for (let i = 0; i < 3; i++) ctx.fillRect(w - 66 + i * 10, 20, 6, 2);
+    ctx.restore();
   }
   root.ExcerptCore = {
     parse,

@@ -6,9 +6,9 @@
     <title>CHAMBER · @COLT</title>
     <meta
       name="description"
-      content="나의 기록을 위한 작은 관제실. SF 프로필과 소설·채팅 발췌 이미지 메이커."
+      content="COLT 통합 작업 단말. 프로필 편집 및 발췌 이미지 출력."
     />
-    <link rel="icon" href="favicon.svg" />
+    <link rel="icon" href="favicon.svg?v=scope3" />
     <link rel="stylesheet" href="fonts.css" />
     <link rel="stylesheet" href="chamber.css" />
     <script src="chamber.js" defer></script>
@@ -16,8 +16,14 @@
   <body>
     <header class="topbar">
       <a class="brand" href="#home" aria-label="CHAMBER 홈"
-        ><span class="brand-icon">C<span>+</span></span> CHAMBER
-        <small> / PERSONAL TERMINAL</small></a
+        ><img
+          class="brand-icon"
+          src="favicon.svg?v=scope3"
+          alt=""
+          width="32"
+          height="32"
+        />
+        CHAMBER <small> / PERSONAL TERMINAL</small></a
       >
       <nav aria-label="메인 탭">
         <a href="#home" data-route="home">HOME</a>
@@ -28,19 +34,19 @@
     </header>
     <main id="home" class="home-view">
       <div class="home-meta">
-        <span>WORKSPACE / 001</span><span>PRIVATE CREATIVE SPACE <b>↗</b></span>
+        <span>WORKSPACE / 001</span
+        ><span>AUTHORIZED PERSONNEL ONLY <b>↗</b></span>
       </div>
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow"><span></span> CONNECTION ESTABLISHED</p>
-          <h1>YOUR OWN<br /><em>CHAMBER.</em></h1>
+          <h1>COLT //<br /><em>CHAMBER</em></h1>
           <p class="intro">
-            당신의 이야기와 기록이 머무는 곳.<br />모듈을 선택하고, 새로운
-            작업을 시작하세요.
+            통합 작업 단말 접속 완료.<br />운용 모듈을 선택하십시오.
           </p>
           <div class="hero-coordinates">
             <span>OPERATOR <b>@COLT</b></span
-            ><span>STATUS <b>READY TO CREATE</b></span>
+            ><span>STATUS <b>STANDING BY</b></span>
           </div>
         </div>
         <div class="radar" aria-hidden="true">
@@ -52,7 +58,9 @@
           <span class="radar-north">N / 000</span
           ><span class="radar-west">270</span
           ><span class="radar-east">090</span>
-          <div class="radar-core">C<span>CHAMBER</span></div>
+          <div class="radar-core">
+            <img src="favicon.svg?v=scope3" alt="" /><span>TARGET LOCK</span>
+          </div>
           <span class="radar-point point-one"></span
           ><span class="radar-point point-two"></span
           ><span class="radar-caption">SIGNAL LOCKED · 02 MODULES</span>
@@ -70,12 +78,9 @@
             </div>
             <div class="module-symbol">[ <span>⌖</span> ]</div>
             <h3>SYS.PROFILE</h3>
-            <p>
-              나를 소개하는 하나의 인터페이스.<br />프로필을 꾸미고 이미지로
-              기록하세요.
-            </p>
+            <p>개인 식별 정보 편집.<br />프로필 구성 및 PNG 출력.</p>
             <div class="module-bottom">
-              <span>프로필 메이커 열기</span><b>↗</b>
+              <span>프로필 모듈 진입</span><b>↗</b>
             </div></a
           >
           <a class="module-card extract-card" href="#excerpt"
@@ -84,11 +89,10 @@
             </div>
             <div class="module-symbol">[ <span>“ ”</span> ]</div>
             <h3>TXT.EXTRACT</h3>
-            <p>
-              간직하고 싶은 장면, 오래 남을 대사.<br />소설과 채팅을 나만의
-              이미지로 만드세요.
-            </p>
-            <div class="module-bottom"><span>발췌기 열기</span><b>↗</b></div></a
+            <p>텍스트 기록 추출.<br />지문·대사 분류 및 이미지 출력.</p>
+            <div class="module-bottom">
+              <span>발췌 모듈 진입</span><b>↗</b>
+            </div></a
           >
           <div class="module-card pending">
             <div class="module-top">
@@ -96,10 +100,7 @@
             </div>
             <div class="module-symbol">[ <span>+</span> ]</div>
             <h3>NEXT.MODULE</h3>
-            <p>
-              아직 쓰이지 않은 다음 이야기.<br />새로운 도구가 이곳에
-              연결됩니다.
-            </p>
+            <p>미할당 모듈 슬롯.<br />추가 장비 배치 대기.</p>
             <div class="module-bottom">
               <span>확장 대기 중</span><span class="pending-bars">▰ ▱ ▱ ▱</span>
             </div>
@@ -108,7 +109,7 @@
       </section>
       <footer class="home-footer">
         <span>MADE BY @COLT <b> / </b> CHAMBER SYSTEM</span
-        ><span>CREATE · COLLECT · KEEP</span>
+        ><span>IDENTIFY · EXTRACT · ARCHIVE</span>
       </footer>
     </main>
     <section

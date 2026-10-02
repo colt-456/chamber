@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  --cyan: #52ded3;
+  --cyan: #b8d7ff;
   --ink: #dfedee;
   --muted: #77959e;
   --line: #254049;
@@ -54,21 +54,11 @@ a:focus-visible {
   font-weight: normal;
 }
 .brand-icon {
-  position: relative;
-  border: 1px solid var(--cyan);
-  width: 30px;
-  height: 30px;
-  color: var(--cyan);
-  line-height: 29px;
-  text-align: center;
-  font-size: 22px;
-}
-.brand-icon span {
-  position: absolute;
-  right: -5px;
-  top: -13px;
-  font-size: 13px;
-  background: #071319;
+  display: block;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  object-fit: contain;
 }
 .topbar nav {
   display: flex;
@@ -101,15 +91,15 @@ a:focus-visible {
   height: 5px;
   background: var(--cyan);
   margin-right: 8px;
-  box-shadow: 0 0 9px #52ded366;
+  box-shadow: 0 0 9px #b8d7ff66;
 }
 .home-view {
   padding: 30px max(32px, calc((100vw - 1240px) / 2)) 20px;
   min-height: calc(100dvh - 72px);
   background-image:
-    linear-gradient(#65d5cf05 1px, transparent 1px),
-    linear-gradient(90deg, #65d5cf05 1px, transparent 1px),
-    radial-gradient(ellipse at 70% 20%, #10343b66, transparent 55%);
+    linear-gradient(#b8d7ff05 1px, transparent 1px),
+    linear-gradient(90deg, #b8d7ff05 1px, transparent 1px),
+    radial-gradient(ellipse at 70% 20%, #14233d66, transparent 55%);
   background-size:
     40px 40px,
     40px 40px,
@@ -181,12 +171,12 @@ a:focus-visible {
   background: conic-gradient(
     from 30deg,
     transparent 0deg,
-    #52ded30c 70deg,
+    #b8d7ff0c 70deg,
     transparent 71deg
   );
 }
 .radar-ring {
-  border: 1px solid #52ded332;
+  border: 1px solid #b8d7ff32;
   border-radius: 50%;
   position: absolute;
   inset: 0;
@@ -197,7 +187,7 @@ a:focus-visible {
 }
 .ring-2 {
   inset: 40px;
-  border-color: #52ded369;
+  border-color: #b8d7ff69;
 }
 .ring-3 {
   inset: 73px;
@@ -205,7 +195,7 @@ a:focus-visible {
 }
 .radar-axis {
   position: absolute;
-  background: #52ded321;
+  background: #b8d7ff21;
 }
 .axis-x {
   height: 1px;
@@ -246,7 +236,7 @@ a:focus-visible {
     56px/1.35 Arial,
     sans-serif;
   font-weight: 300;
-  text-shadow: 0 0 25px #52ded345;
+  text-shadow: 0 0 25px #b8d7ff45;
 }
 .radar-core span {
   display: block;
@@ -258,7 +248,7 @@ a:focus-visible {
   width: 6px;
   height: 6px;
   background: var(--cyan);
-  box-shadow: 0 0 14px #52ded3;
+  box-shadow: 0 0 14px #b8d7ff;
 }
 .point-one {
   left: 55px;
@@ -338,7 +328,7 @@ a.module-card:hover {
 }
 .tag {
   color: var(--cyan);
-  border: 1px solid #52ded340;
+  border: 1px solid #b8d7ff40;
   padding: 2px 6px;
   font-size: 8px;
 }
@@ -528,4 +518,39 @@ a.module-card:hover {
   .module-view {
     height: calc(100dvh - 98px);
   }
+}
+
+.radar-core img {
+  display: block;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 8px;
+}
+@media (max-width: 680px) {
+  .brand-icon {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+/* Center the reticle independently from its caption. */
+.radar-core {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 80px;
+  height: 80px;
+  transform: translate(-50%, -50%);
+}
+.radar-core img {
+  width: 80px;
+  height: 80px;
+  margin: 0;
+}
+.radar-core span {
+  position: absolute;
+  top: calc(100% + 13px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
