@@ -8,11 +8,11 @@
     <link rel="icon" href="favicon.svg?v=scope3" />
     <link rel="stylesheet" href="fonts.css" />
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="excerpt.css?v=20261006-mobile" />
+    <link rel="stylesheet" href="excerpt.css?v=20261006-edit" />
     <script src="profile-presets.js" defer></script>
-    <script src="excerpt-core.js" defer></script>
-    <script src="excerpt.js" defer></script>
-    <script src="excerpt-mobile.js" defer></script>
+    <script src="excerpt-core.js?v=20261006-edit" defer></script>
+    <script src="excerpt.js?v=20261006-edit" defer></script>
+    <script src="excerpt-mobile.js?v=20261006-edit" defer></script>
   </head>
   <body>
     <div class="workspace extract-workspace">
@@ -39,8 +39,11 @@
         <div class="panel-scroll">
           <section id="panel-text" class="panel">
             <div class="section-title"><span>01</span> TEXT INPUT</div>
-            <label for="raw-text"
-              >발췌 내용 <span class="subtle">서식 없이 붙여넣기</span></label
+            <div class="raw-heading"><label for="raw-text"
+              >발췌 내용</label><div class="raw-actions">
+<button id="clear-raw" class="icon-action" aria-label="기존 발췌 내용 삭제" title="기존 발췌 내용 삭제"><svg viewBox="0 0 24 24"><path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></svg></button>
+<button id="paste-raw" class="icon-action" aria-label="클립보드로 발췌 내용 덮어쓰기" title="클립보드로 덮어쓰기"><svg viewBox="0 0 24 24"><path d="M8 5H5v16h14V5h-3M9 3h6v5H9zM8 12h8m-8 4h6"/></svg></button>
+</div></div><label class="sr-only" for="raw-text">서식 없이 붙여넣기</label
             >
             <textarea
               id="raw-text"
@@ -97,7 +100,7 @@
                 ><button data-mark="italic" title="선택 글자 이탤릭">
                   <i>I</i></button
                 ><button data-mark="strike" title="선택 글자 취소선">
-                  <s>S</s></button
+                  <s>S</s></button><button data-mark="underline" title="선택 글자 밑줄"><u>U</u></button
                 ><input
                   id="mark-color"
                   type="color"
@@ -107,8 +110,7 @@
                 ><button id="clear-marks">초기화</button>
               </div>
               <p class="hint">
-                문자 범위 선택 후 서식 지정. 미선택 시 문단 전체 적용. 내용 수정
-                시 부분 서식 초기화.
+                문자 범위 선택 후 서식 지정. 미선택 시 문단 전체 적용. 미리보기의 문단을 눌러 직접 수정 가능.
               </p>
               <div class="two-col">
                 <button id="delete-block">문단 삭제</button
@@ -328,6 +330,7 @@
               <label><input id="style-bold" type="checkbox" /> 굵게</label
               ><label><input id="style-italic" type="checkbox" /> 이탤릭</label
               ><label><input id="style-strike" type="checkbox" /> 취소선</label>
+              <label><input id="style-underline" type="checkbox" /> 밑줄</label>
             </div>
             <div class="two-col">
               <label class="check-label"
@@ -568,7 +571,16 @@
           <div class="sys-title">
             TXT. <strong>EXTRACT</strong><span>발췌 데이터 편집 및 출력.</span>
           </div>
-          <div class="toolbar-actions">
+          <div id="preview-format" class="preview-format" role="toolbar" aria-label="미리보기 선택 글자 서식">
+<label class="format-color" title="선택 글자 색상">A<input type="color" id="preview-text-color" value="#e4f1f5" aria-label="선택 글자 색상"></label>
+<button data-preview-mark="bold" aria-label="선택 글자 굵게" title="굵게"><b>B</b></button>
+<button data-preview-mark="italic" aria-label="선택 글자 이탤릭" title="이탤릭"><i>I</i></button>
+<button data-preview-mark="strike" aria-label="선택 글자 취소선" title="취소선"><s>S</s></button>
+<button data-preview-mark="underline" aria-label="선택 글자 밑줄" title="밑줄"><u>U</u></button>
+<button data-preview-mark="highlight" aria-label="선택 글자 형광펜" title="형광펜">▰</button>
+<input type="color" id="preview-highlight-color" value="#ffee88" aria-label="미리보기 형광펜 색상">
+<button id="finish-preview-edit" aria-label="미리보기 편집 완료" title="편집 완료">✓</button>
+</div><div class="toolbar-actions">
             <div class="segmented small" aria-label="표현 형식">
               <button data-format="novel" class="selected" aria-pressed="true">
                 ▤ 소설형</button
@@ -595,6 +607,8 @@
         </div>
         <div id="preview-scroll" class="stage preview-scroll">
           <div id="canvas-holder">
+<div id="preview-hits" aria-label="미리보기 문단 편집"></div>
+<div id="preview-editor-wrap" hidden><textarea id="preview-text-editor" aria-label="미리보기 문단 내용" spellcheck="false"></textarea><span>선택 범위 서식: 상단 도구 · 완료: ✓ / Esc</span></div>
             <canvas
               id="excerpt-canvas"
               aria-label="발췌 이미지 미리보기"
@@ -632,7 +646,8 @@
             입력 시 패널이 자동 확장되며, 복귀 버튼으로 미리보기를 다시 표시합니다.
             TEXT 패널에 원문을 붙여넣으십시오. *지문*, “대사”, 인물명: 대사를
             자동 분류합니다. 표시 없는 문장은 기본 분류를 지정하고 문단별로
-            수정하십시오.
+            수정하십시오. 입력란 바로 위의 휴지통은 전체 내용 삭제,
+            클립보드 버튼은 새 원문으로 덮어쓰기를 실행합니다.
           </p>
         </li>
         <li>
@@ -640,7 +655,9 @@
           <p>
             FONT 탭에서 본문 글꼴·크기·장평·자간을 지정합니다. 기본 크기는
             12pt입니다. 지문·대사·인물·문단별 서식과 선택 글자 형광펜을
-            지원합니다.
+            지원합니다. 미리보기의 문단을 누르면 바로 수정할 수 있습니다.
+            글자 범위를 선택하고 상단 도구에서 색상·굵게·이탤릭·취소선·밑줄·형광펜을
+            지정하십시오. ✓ 또는 Esc로 직접 편집을 종료합니다.
           </p>
         </li>
         <li>

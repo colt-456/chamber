@@ -3,6 +3,36 @@
   min-width: 0;
 }
 .panel-resizer { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.raw-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.raw-heading > label { margin: 0; }
+.raw-actions { display: flex; gap: 6px; }
+.icon-action { width: 30px; height: 30px; padding: 6px; clip-path: polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px); }
+.icon-action svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.preview-format { display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; }
+.preview-format button, .format-color { height: 29px; min-width: 29px; padding: 3px 6px; font-size: 13px; clip-path: polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px); }
+.format-color { position: relative; border: 1px solid var(--line); text-align: center; color: var(--text); }
+.format-color input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+#preview-highlight-color { width: 24px; height: 29px; padding: 2px; border: 1px solid var(--line); }
+.preview-toolbar .sys-title > span { display: none; }
+#canvas-holder { position: relative; }
+#preview-hits { position: absolute; inset: 0; pointer-events: none; }
+.preview-hit { position: absolute; padding: 0; border: 0; background: transparent; pointer-events: auto; cursor: text; }
+.preview-hit:hover, .preview-hit:focus-visible { outline: 1px dashed var(--accent); background: #b8d7ff08; }
+#preview-editor-wrap { position: absolute; z-index: 4; background: var(--studio-panel); border: 1px solid var(--accent); padding: 5px; }
+#preview-text-editor { display: block; width: 100%; resize: vertical; border: 0; padding: 5px; line-height: 1.7; background: var(--control-bg); color: var(--text); }
+#preview-editor-wrap > span { font-size: 9px; color: var(--muted); }
+@media (min-width: 761px) and (max-width: 1120px) {
+  .preview-toolbar .sys-title { display: none; }
+  .preview-toolbar { padding: 0 10px; }
+}
+@media (max-width: 760px) {
+  .preview-toolbar { flex-wrap: wrap; justify-content: space-between; align-content: center; gap: 5px; }
+  .preview-format { order: 3; width: 100%; }
+  .extract-workspace .preview-panel { grid-template-rows: 98px 32px minmax(0, 1fr) 32px; }
+  .extract-workspace.compact-preview .preview-panel { grid-template-rows: 98px minmax(0, 1fr); }
+  .extract-workspace.preview-direct-edit .controls { visibility: hidden; }
+}
 .panel-scroll {
   display: flex;
   flex: 1;

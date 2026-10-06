@@ -62,8 +62,8 @@
         {
           position: key === "title" ? "tl" : key === "platform" ? "br" : "bl",
           inherit: true,
-          label: key !== "title",
-          bold: key === "title",
+          label: false,
+          bold: true,
           size: 14,
           color: "#e4f1f5",
           fontFamily: fontFamily(profile.FONTS[0]),
@@ -94,6 +94,7 @@
     drawTimer,
     busy = false,
     loadSequence = 0;
+  let previewHits = [], previewEditing = null;
   let selection = { start: 0, end: 0 },
     exportSequence = 0;
   const SAMPLE =
@@ -118,6 +119,7 @@
     const ratio = zoom || Math.min(1, available / result.width);
     canvas.style.width = `${Math.round(result.width * ratio)}px`;
     canvas.style.height = "auto";
+    positionPreviewEditor();
     $("zoom-label").textContent = `${Math.round(ratio * 100)}%`;
   }
   function setExportEnabled(enabled) {
@@ -144,7 +146,8 @@
     try {
       result = core.layout(measure, state);
       page = Math.min(page, result.pages.length - 1);
-      core.draw(canvas, state, result, page);
+      previewHits = core.draw(canvas, state, result, page);
+      renderPreviewHits();
       fitCanvas();
       $("dimensions").textContent =
         `${result.width} × ${result.height} PX · ${result.pages.length} PAGE${result.pages.length > 1 ? "S" : ""}`;
@@ -288,6 +291,7 @@
       `${$("raw-text").value.length.toLocaleString()} / 30,000`;
   }
   function applyText() {
+    closePreviewEditor();
     const raw = $("raw-text").value.slice(0, 30000);
     const blocks = core.parse(raw, $("plain-type").value);
     if (blocks.length > 1500) {
@@ -401,7 +405,7 @@
     const style = resolvedStyle();
     $("style-color").value = style.color;
     $("style-bubble").value = style.bubble || state.config.bubble;
-    ["bold", "italic", "strike"].forEach(
+    ["bold", "italic", "strike", "underline"].forEach(
       (key) => ($(`style-${key}`).checked = !!style[key]),
     );
     $("style-highlight-on").checked = !!style.highlight;
@@ -419,6 +423,7 @@
     "bold",
     "italic",
     "strike",
+    "underline",
     "align",
     "highlight",
     "highlight-on",
@@ -430,7 +435,7 @@
           ? $("style-highlight").value
           : "";
       else
-        target[key] = ["bold", "italic", "strike"].includes(key)
+        target[key] = ["bold", "italic", "strike", "underline"].includes(key)
           ? $(`style-${key}`).checked
           : $(`style-${key}`).value;
       schedule();
@@ -481,9 +486,10 @@
       (total, b) => total + (b.id === selected ? 0 : b.text.length),
       0,
     );
-    block.text = $("block-text").value.slice(0, 30000 - otherLength);
+    const nextText = $("block-text").value.slice(0, 30000 - otherLength);
+    remapMarks(block, nextText);
+    block.text = nextText;
     $("block-text").value = block.text;
-    block.marks = [];
     const item = Array.from($("block-list").children).find(
       (item) => item.dataset.id === selected,
     );
@@ -502,25 +508,8 @@
   );
   document.querySelectorAll("[data-mark]").forEach((button) => {
     button.addEventListener("pointerdown", (event) => event.preventDefault());
-    button.onclick = () => {
-      const block = currentBlock();
-      if (!block) return;
-      const key = button.dataset.mark,
-        value = key === "highlight" ? $("mark-color").value : true;
-      const { start, end } = selection;
-      if (end > start)
-        block.marks.push({ start, end, style: { [key]: value } });
-      else
-        block.style[key] =
-          key === "highlight"
-            ? block.style.highlight
-              ? ""
-              : value
-            : !core.blockStyle(block, state)[key];
-      if (block.marks.length > 500) block.marks.shift();
-      syncStyle();
-      schedule();
-    };
+    button.onclick = () => applySelectionStyle(button.dataset.mark,
+      button.dataset.mark === "highlight" ? $("mark-color").value : undefined);
   });
   $("clear-marks").onclick = () => {
     const block = currentBlock();
@@ -938,7 +927,12 @@
     zoom = null;
     fitCanvas();
   };
-  new ResizeObserver(fitCanvas).observe($("preview-scroll"));
+  new ResizeObserver(() => {
+    fitCanvas();
+    if (previewEditing) requestAnimationFrame(() => {
+      if (previewEditing) $("preview-text-editor").scrollIntoView({block: "nearest"});
+    });
+  }).observe($("preview-scroll"));
   function download(blob, name) {
     const url = URL.createObjectURL(blob),
       a = document.createElement("a");
@@ -1182,7 +1176,7 @@
     for (const key of ["color", "bubble", "highlight"])
       if (color(style[key]) || (key === "highlight" && style[key] === ""))
         clean[key] = style[key];
-    for (const key of ["bold", "italic", "strike"])
+    for (const key of ["bold", "italic", "strike", "underline"])
       if (typeof style[key] === "boolean") clean[key] = style[key];
     if (["auto", "left", "right"].includes(style.align))
       clean.align = style.align;
@@ -1307,6 +1301,127 @@
       $("preset-name").value = "";
       presetMessage("PRESET / 삭제 완료.");
     });
+  function remapMarks(block, next) {
+    const old = block.text;
+    let start = 0, end = old.length, nextEnd = next.length;
+    while (start < end && start < nextEnd && old[start] === next[start]) start++;
+    while (end > start && nextEnd > start && old[end - 1] === next[nextEnd - 1]) { end--; nextEnd--; }
+    const shift = nextEnd - end;
+    block.marks = block.marks.flatMap(mark => {
+      if (mark.end <= start) return [mark];
+      if (mark.start >= end) return [{...mark, start: mark.start + shift, end: mark.end + shift}];
+      // Preserve the surviving portions of a marked span across a text replacement.
+      const a = Math.min(mark.start, start), b = mark.end > end ? mark.end + shift : nextEnd;
+      return b > a ? [{...mark, start: a, end: b}] : [];
+    });
+  }
+  function applySelectionStyle(key, value) {
+    const block = currentBlock();
+    if (!block) return message("미리보기 또는 TEXT에서 문단을 선택하십시오.", true);
+    const {start, end} = selection;
+    if (value === undefined) {
+      const style = {...core.blockStyle(block, state)};
+      block.marks.forEach(m => { if (start >= m.start && start < m.end) Object.assign(style, m.style); });
+      value = !style[key];
+    }
+    if (end > start) block.marks.push({start, end, style: {[key]: value}});
+    else block.style[key] = key === "highlight" && block.style[key] === value ? "" : value;
+    if (block.marks.length > 500) block.marks.shift();
+    syncStyle();
+    render();
+  }
+  function closePreviewEditor() {
+    if (!previewEditing) return;
+    previewEditing = null;
+    $("preview-editor-wrap").hidden = true;
+    document.dispatchEvent(new CustomEvent("excerpt:preview-edit", {detail: false}));
+  }
+  function positionPreviewEditor() {
+    if (!previewEditing || !result) return;
+    const hit = previewHits.find(h => h.blockId === previewEditing);
+    if (!hit) return closePreviewEditor();
+    const ratio = canvas.clientWidth / result.width;
+    const wrap = $("preview-editor-wrap"), input = $("preview-text-editor");
+    const width = Math.min(canvas.clientWidth, Math.max(220, hit.width * ratio));
+    wrap.style.left = `${Math.max(0, Math.min(hit.x * ratio, canvas.clientWidth - width))}px`;
+    wrap.style.top = `${hit.y * ratio}px`;
+    wrap.style.width = `${width}px`;
+    input.style.height = `${Math.min(220, Math.max(100, hit.height * ratio + 24))}px`;
+    input.style.fontFamily = state.config.fontFamily;
+    input.style.fontSize = `${Math.max(16, state.config.fontSize * ratio)}px`;
+  }
+  function openPreviewEditor(hit) {
+    selected = hit.blockId;
+    renderBlocks();
+    renderStyleTargets();
+    previewEditing = selected;
+    const input = $("preview-text-editor");
+    input.value = currentBlock().text;
+    $("preview-editor-wrap").hidden = false;
+    document.dispatchEvent(new CustomEvent("excerpt:preview-edit", {detail: true}));
+    positionPreviewEditor();
+    input.focus({preventScroll: true});
+    input.setSelectionRange(hit.start, hit.start);
+    selection = {start: hit.start, end: hit.start};
+    input.scrollIntoView({block: "nearest"});
+  }
+  function renderPreviewHits() {
+    $("preview-hits").replaceChildren(...previewHits.map(hit => {
+      const b = document.createElement("button");
+      b.className = "preview-hit";
+      b.setAttribute("aria-label", `문단 직접 편집: ${state.blocks.find(x => x.id === hit.blockId)?.text.slice(0, 35) || "빈 문단"}`);
+      Object.assign(b.style, {left: `${hit.x / result.width * 100}%`, top: `${hit.y / result.height * 100}%`,
+        width: `${hit.width / result.width * 100}%`, height: `${hit.height / result.height * 100}%`});
+      b.onclick = () => openPreviewEditor(hit);
+      return b;
+    }));
+    if (previewEditing && previewEditing !== selected) closePreviewEditor();
+    positionPreviewEditor();
+  }
+  const previewInput = $("preview-text-editor");
+  for (const event of ["select", "keyup", "mouseup", "touchend"])
+    previewInput.addEventListener(event, () => { selection = {start: previewInput.selectionStart, end: previewInput.selectionEnd}; });
+  previewInput.addEventListener("input", () => {
+    const block = currentBlock();
+    if (!block || previewEditing !== block.id) return;
+    const other = state.blocks.reduce((n,b) => n + (b.id === block.id ? 0 : b.text.length), 0);
+    const next = previewInput.value.slice(0, 30000 - other);
+    remapMarks(block, next);
+    block.text = next;
+    if (previewInput.value !== next) previewInput.value = next;
+    $("block-text").value = next;
+    selection = {start: previewInput.selectionStart, end: previewInput.selectionEnd};
+    const item = [...$("block-list").children].find(b => b.dataset.id === selected);
+    if (item) item.querySelector("small").textContent = next;
+    schedule();
+  });
+  previewInput.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); closePreviewEditor(); } });
+  $("finish-preview-edit").onclick = closePreviewEditor;
+  document.addEventListener("pointerdown", e => {
+    if (previewEditing && !e.target.closest("#preview-editor-wrap, #preview-format, .inline-toolbar, .preview-hit")) closePreviewEditor();
+  });
+  document.querySelectorAll("[data-preview-mark]").forEach(b => {
+    b.addEventListener("pointerdown", e => e.preventDefault());
+    b.onclick = () => applySelectionStyle(b.dataset.previewMark,
+      b.dataset.previewMark === "highlight" ? $("preview-highlight-color").value : undefined);
+  });
+  $("preview-text-color").addEventListener("input", e => applySelectionStyle("color", e.target.value));
+  $("clear-raw").onclick = () => { $("raw-text").value = ""; applyText(); message("발췌 내용 삭제 완료."); };
+  $("paste-raw").onclick = async () => {
+    const before = $("raw-text").value;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return message("클립보드에 텍스트가 없습니다.", true);
+      if (text.length > 30000) return message("30,000자 초과. 클립보드 내용을 줄이십시오. 기존 내용 유지.", true);
+      if ($("raw-text").value !== before) return message("입력 내용 변경 감지. 덮어쓰기 버튼을 다시 누르십시오.", true);
+      if (core.parse(text, $("plain-type").value).length > 1500) return message("문단 한도 초과. 기존 내용 유지.", true);
+      $("raw-text").value = text;
+      applyText();
+      message("클립보드 내용으로 교체 완료.");
+    } catch {
+      message("클립보드 읽기 불가. 브라우저 권한을 허용하거나 입력란에서 직접 붙여넣으십시오. 기존 내용 유지.", true);
+    }
+  };
   document.fonts.addEventListener("loadingdone", schedule);
   syncConfig();
   renderBlocks();

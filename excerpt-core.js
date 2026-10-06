@@ -104,7 +104,7 @@
       );
       if (used + advance - config.letterSpacing > width && glyphs.length)
         push();
-      glyphs.push({ text: part.text, advance, style });
+      glyphs.push({ text: part.text, index: part.index, advance, style });
       used += advance;
     }
     if (glyphs.length || !lines.length) push();
@@ -334,10 +334,15 @@
           Math.max(1, config.fontSize / 18),
         );
       }
+      if (style.underline) {
+        ctx.fillStyle = style.color;
+        ctx.fillRect(x, y + config.fontSize * 0.14, glyph.advance, Math.max(1, config.fontSize / 18));
+      }
       x += glyph.advance;
     }
   }
   function draw(canvas, state, result, pageIndex) {
+    const hitAreas = [];
     const c = state.config;
     canvas.width = result.width;
     canvas.height = result.height;
@@ -506,6 +511,10 @@
           }
         }
       }
+      hitAreas.push({ blockId: row.blockId, x: row.chat ? left + 18 : c.padding,
+        y: y + row.top, width: row.chat ? bubbleWidth - 36 : row.textWidth,
+        height: Math.max(c.fontSize * c.lineHeight, groupHeight - row.top - group[group.length - 1].bottom),
+        start: row.glyphs[0]?.index || 0 });
       for (const item of group) {
         const x = row.chat ? left + 18 : c.padding;
         if (item.first && item.speaker) {
@@ -529,6 +538,7 @@
       );
       ctx.textAlign = "left";
     }
+    return hitAreas;
   }
   function panelPath(ctx, x, y, w, h, cut) {
     ctx.beginPath();

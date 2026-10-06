@@ -6,14 +6,14 @@
   const toggle = document.getElementById("panel-size-toggle");
   const mobile = matchMedia("(max-width: 760px)");
   const editable = 'textarea, input:not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"])';
-  let preferred = 0.42, editing = false, expanded = false, editingHeight = 55;
-  let height = 55, drag = null, revealFrame = 0;
+  let preferred = 0.42, editing = false, expanded = false, editingHeight = 98, previewMode = false;
+  let height = 98, drag = null, revealFrame = 0;
   function limits() {
-    return { min: 55, max: Math.max(55, workspace.clientHeight - 230) };
+    return { min: 98, max: Math.max(98, workspace.clientHeight - 230) };
   }
   function notify() {
     if (parent !== window)
-      parent.postMessage({ type: "chamber:editing", active: mobile.matches && editing }, location.origin);
+      parent.postMessage({ type: "chamber:editing", active: mobile.matches && (editing || previewMode) }, location.origin);
   }
   function reveal() {
     cancelAnimationFrame(revealFrame);
@@ -36,6 +36,7 @@
     }
     const {min, max} = limits();
     height = Math.max(min, Math.min(max, editing ? editingHeight : expanded ? min : workspace.clientHeight * preferred));
+    if (previewMode) height = workspace.clientHeight;
     workspace.style.setProperty("--mobile-preview-height", `${height}px`);
     workspace.classList.toggle("compact-preview", height < 140);
     workspace.classList.toggle("mobile-editing", editing);
@@ -84,7 +85,7 @@
   controls.addEventListener("focusin", (event) => {
     if (!mobile.matches || !event.target.matches(editable)) return;
     editing = true;
-    editingHeight = 55;
+    editingHeight = 98;
     notify();
     layout();
   });
@@ -97,6 +98,11 @@
     });
   });
   mobile.addEventListener("change", () => { notify(); layout(); });
+  document.addEventListener("excerpt:preview-edit", event => {
+    previewMode = !!event.detail;
+    workspace.classList.toggle("preview-direct-edit", previewMode);
+    notify(); layout();
+  });
   new ResizeObserver(layout).observe(workspace);
   layout();
 })();
