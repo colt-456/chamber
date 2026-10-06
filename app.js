@@ -34,6 +34,7 @@ const emptyImage = () => ({
 });
 
 const THEMES = window.ChamberProfile.THEMES;
+const DEFAULT_THEME = { id: 'default', accent: '#b8d7ff', bg1: '#0a1322', bg2: '#03060c' };
 
 let palette;
 
@@ -42,6 +43,11 @@ function colors() {
   const rgb = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
   const light = (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722) > 155;
   
+  if (!light && state.theme === DEFAULT_THEME.id) return {
+    light, ink: '#e5efff', text: '#b4c6df', muted: '#859bb8',
+    dim: '#506888', line: '#304561', surface: '#0b1628',
+    panel: '#b8d7ff06', grid: '#b8d7ff0b'
+  };
   return light ? {
     light, ink: '#202838', text: '#354155', muted: '#59677d', 
     dim: '#737e91', line: '#8e9aae', surface: '#d5dce6', 
@@ -54,7 +60,7 @@ function colors() {
 }
 
 function applyTheme(id) {
-  const t = THEMES.find(t => t.id === id) || THEMES[0];
+  const t = THEMES.find(t => t.id === id) || DEFAULT_THEME;
   Object.assign(state, { theme: t.id, accent: t.accent, bg1: t.bg1, bg2: t.bg2 });
   syncFields();
 }
@@ -102,7 +108,7 @@ const initial = () => ({
   contact: '연결 방법 또는 메모 입력.', farewell: '재연결 가능 여부 등 입력.', 
   genre: '', info: '자기소개 입력.\n중요한 내용입니다.', 
   ng: 'NG사항 입력.', galleryTitle: '좋아하는 것들/페어 등', credit: '', 
-  theme: 'cyan', accent: '#52ded3', bg1: '#081c21', bg2: '#02090d', 
+  theme: DEFAULT_THEME.id, accent: DEFAULT_THEME.accent, bg1: DEFAULT_THEME.bg1, bg2: DEFAULT_THEME.bg2, 
   layout: 'landscape', grid: true, mono: false, font: 'd2', 
   sizes: { ...DEFAULT_SIZES }, edited: {}, 
   avatar: emptyImage(), gallery: [emptyImage(), emptyImage()], stickers: [], 
@@ -1363,8 +1369,8 @@ $('add-image').onclick = () => {
 };
 
 $('reset-colors').onclick = () => {
-  applyTheme(state.theme);
-  toast('선택한 테마의 기본 색상으로 복원했습니다.');
+  applyTheme(DEFAULT_THEME.id);
+  toast('기본 색상 복원. 테마 선택 해제.');
 };
 
 $('help').onclick = () =>$('help-dialog').showModal();

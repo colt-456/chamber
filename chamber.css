@@ -1,9 +1,9 @@
 :root {
   color-scheme: dark;
-  --cyan: #b8d7ff;
-  --ink: #dfedee;
-  --muted: #77959e;
-  --line: #254049;
+  --accent: #b8d7ff;
+  --ink: #e5efff;
+  --muted: #859bb8;
+  --line: #304561;
   --mono: "D2Coding", monospace;
 }
 * {
@@ -11,7 +11,7 @@
 }
 body {
   margin: 0;
-  background: #040d12;
+  background: #03060c;
   color: var(--ink);
   font: 14px/1.6 var(--mono);
 }
@@ -20,7 +20,7 @@ a {
   text-decoration: none;
 }
 a:focus-visible {
-  outline: 2px solid var(--cyan);
+  outline: 2px solid var(--accent);
   outline-offset: 5px;
 }
 [hidden] {
@@ -34,7 +34,7 @@ a:focus-visible {
   gap: 20px;
   padding: 0 32px;
   border-bottom: 1px solid var(--line);
-  background: #071319;
+  background: #0a1322;
   position: sticky;
   top: 0;
   z-index: 2;
@@ -76,21 +76,21 @@ a:focus-visible {
   border-bottom: 2px solid transparent;
 }
 .topbar nav a[aria-current] {
-  color: var(--cyan);
-  border-color: var(--cyan);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .online {
   font-size: 10px;
   letter-spacing: 1px;
   white-space: nowrap;
-  color: var(--cyan);
+  color: var(--accent);
 }
 .online i,
 .eyebrow span {
   display: inline-block;
   width: 5px;
   height: 5px;
-  background: var(--cyan);
+  background: var(--accent);
   margin-right: 8px;
   box-shadow: 0 0 9px #b8d7ff66;
 }
@@ -115,7 +115,7 @@ a:focus-visible {
   letter-spacing: 1.5px;
 }
 .home-meta b {
-  color: var(--cyan);
+  color: var(--accent);
   margin-left: 12px;
 }
 .hero {
@@ -128,7 +128,7 @@ a:focus-visible {
 }
 .eyebrow {
   font-size: 10px;
-  color: var(--cyan);
+  color: var(--accent);
   letter-spacing: 2px;
 }
 .hero h1 {
@@ -141,10 +141,10 @@ a:focus-visible {
 }
 .hero h1 em {
   font-style: normal;
-  color: var(--cyan);
+  color: var(--accent);
 }
 .intro {
-  color: #a1b7be;
+  color: #a6b8d1;
   line-height: 1.95;
   font-size: 13px;
 }
@@ -158,7 +158,7 @@ a:focus-visible {
 }
 .hero-coordinates b {
   display: block;
-  color: #b1ced1;
+  color: #bdcfe8;
   font-weight: normal;
   font-size: 10px;
   margin-top: 4px;
@@ -168,7 +168,7 @@ a:focus-visible {
   width: 280px;
   position: relative;
   margin: auto;
-  color: var(--cyan);
+  color: var(--accent);
   background: conic-gradient(
     from 30deg,
     transparent 0deg,
@@ -214,7 +214,7 @@ a:focus-visible {
 .radar-west,
 .radar-east {
   position: absolute;
-  color: #577e88;
+  color: #586e91;
   font-size: 9px;
 }
 .radar-north {
@@ -248,7 +248,7 @@ a:focus-visible {
   position: absolute;
   width: 6px;
   height: 6px;
-  background: var(--cyan);
+  background: var(--accent);
   box-shadow: 0 0 14px #b8d7ff;
 }
 .point-one {
@@ -283,7 +283,7 @@ a:focus-visible {
 }
 .section-heading h2:before {
   content: "//";
-  color: var(--cyan);
+  color: var(--accent);
   margin-right: 12px;
 }
 .section-heading > span {
@@ -299,7 +299,7 @@ a:focus-visible {
 .module-card {
   position: relative;
   border: 1px solid var(--line);
-  background: linear-gradient(135deg, #0c232a99, #08141be0);
+  background: linear-gradient(135deg, #14243c99, #0a1322e0);
   padding: 20px 24px 0;
   transition:
     border-color 0.2s,
@@ -313,10 +313,10 @@ a:focus-visible {
   top: 0;
   width: 38px;
   height: 2px;
-  background: var(--cyan);
+  background: var(--accent);
 }
 a.module-card:hover {
-  border-color: var(--cyan);
+  border-color: var(--accent);
   transform: translateY(-3px);
 }
 .module-top {
@@ -328,18 +328,18 @@ a.module-card:hover {
   color: var(--muted);
 }
 .tag {
-  color: var(--cyan);
+  color: var(--accent);
   border: 1px solid #b8d7ff40;
   padding: 2px 6px;
   font-size: 8px;
 }
 .module-symbol {
   font-size: 24px;
-  color: #42636d;
+  color: #435a7a;
   margin: 19px 0 13px;
 }
 .module-symbol span {
-  color: var(--cyan);
+  color: var(--accent);
   margin: 0 4px;
 }
 .module-card h3 {
@@ -350,7 +350,7 @@ a.module-card:hover {
 }
 .module-card p {
   font-size: 12px;
-  color: #97b0b9;
+  color: #9cafd0;
   line-height: 1.9;
   margin: 0 0 22px;
 }
@@ -361,7 +361,7 @@ a.module-card:hover {
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
-  color: var(--cyan);
+  color: var(--accent);
 }
 .module-bottom b {
   font-size: 20px;
@@ -369,18 +369,18 @@ a.module-card:hover {
 }
 .pending {
   border-style: dashed;
-  background: #07121877;
+  background: #0a132277;
 }
 .pending:before {
-  background: #42636d;
+  background: #435a7a;
 }
 .pending h3,
 .pending .module-symbol span {
-  color: #637f89;
+  color: #667e9f;
 }
 .pending p,
 .pending .module-bottom {
-  color: #5d7984;
+  color: #607695;
 }
 .pending-bars {
   letter-spacing: 4px;
@@ -392,7 +392,7 @@ a.module-card:hover {
   font-size: 9px;
 }
 .home-footer b {
-  color: #34505b;
+  color: #344964;
   margin: 0 10px;
 }
 .module-view {
