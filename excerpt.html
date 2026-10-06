@@ -8,14 +8,22 @@
     <link rel="icon" href="favicon.svg?v=scope3" />
     <link rel="stylesheet" href="fonts.css" />
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="excerpt.css" />
+    <link rel="stylesheet" href="excerpt.css?v=20261006-mobile" />
     <script src="profile-presets.js" defer></script>
     <script src="excerpt-core.js" defer></script>
     <script src="excerpt.js" defer></script>
+    <script src="excerpt-mobile.js" defer></script>
   </head>
   <body>
     <div class="workspace extract-workspace">
       <aside class="editor controls" aria-label="발췌 편집 도구">
+        <div class="panel-resizer" role="separator" tabindex="0"
+          aria-label="컨트롤 패널 높이 조절" aria-orientation="horizontal"
+          aria-controls="panel-text panel-type panel-background panel-output"
+          aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+          <span aria-hidden="true">━━━━</span> PANEL / 위아래로 조절
+          <button type="button" id="panel-size-toggle" aria-label="컨트롤 패널 최대 확장">확장 ↑</button>
+        </div>
         <header class="editor-title">
           <span class="eyebrow">SYS. CONTROL</span>
           <button id="help" class="quiet" aria-label="User Manual">?</button>
@@ -620,6 +628,8 @@
         <li>
           <b>텍스트 입력</b>
           <p>
+            모바일에서는 패널 상단 손잡이를 위아래로 끌어 높이를 조절합니다.
+            입력 시 패널이 자동 확장되며, 복귀 버튼으로 미리보기를 다시 표시합니다.
             TEXT 패널에 원문을 붙여넣으십시오. *지문*, “대사”, 인물명: 대사를
             자동 분류합니다. 표시 없는 문장은 기본 분류를 지정하고 문단별로
             수정하십시오.

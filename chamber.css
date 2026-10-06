@@ -535,6 +535,31 @@ a.module-card:hover {
 }
 
 /* Center the reticle independently from its caption. */
+@media (max-width: 760px) {
+  body[data-route="excerpt"] { overflow: hidden; }
+  body[data-route="excerpt"] .topbar {
+    position: fixed;
+    top: var(--visible-top, 0px);
+    left: 0;
+    right: 0;
+  }
+  body[data-route="excerpt"] #excerpt-view {
+    position: fixed;
+    top: var(--editor-top, 98px);
+    left: 0;
+    right: 0;
+    height: var(--editor-height, calc(100dvh - 98px));
+  }
+  body[data-route="excerpt"].mobile-text-editing .topbar {
+    height: 42px;
+    padding: 0 14px;
+    display: flex;
+    justify-content: center;
+  }
+  body[data-route="excerpt"].mobile-text-editing .topbar .brand,
+  body[data-route="excerpt"].mobile-text-editing .topbar .online { display: none; }
+  body[data-route="excerpt"].mobile-text-editing .topbar nav { height: 42px; }
+}
 .radar-core {
   inset: auto;
   left: 50%;
