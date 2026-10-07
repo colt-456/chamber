@@ -566,7 +566,9 @@
     }),
   );
   function updateChrome() {
-    const p = profile.palette(state.config.background),
+    const p = state.config.theme === "sirius"
+        ? {light:false, ink:"#e5efff", muted:"#859bb8", line:"#304561"}
+        : profile.palette(state.config.background),
       c = state.config;
     const variables = {
       "--accent": c.accent,
