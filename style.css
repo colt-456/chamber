@@ -1027,4 +1027,12 @@ dialog li b {
 .field-hit[data-kind=sticker] {
   cursor: grab;
   touch-action: none;
-}
+}.license-notice { margin:20px 0; color:var(--muted); font-size:12px; }
+.license-notice summary { cursor:pointer; color:var(--accent); }
+.license-notice p { font-size:12px; }
+.license-notice a { color:var(--accent); }
+.profile-font-upload { cursor:pointer; }
+.profile-font-upload small { display:block; }
+.profile-font-tools { display:flex; gap:8px; margin-top:10px; }
+.profile-font-tools select { min-width:0; flex:1; }
+.profile-font-tools button { flex-shrink:0; }

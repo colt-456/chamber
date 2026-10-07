@@ -474,3 +474,20 @@
 }
 
 #preview-text-editor { touch-action: none; }
+
+/* Keep module identity visible and center quick editing independently of side actions. */
+.preview-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; }
+.preview-toolbar .sys-title { display:block; justify-self:start; }
+.preview-toolbar .preview-format { justify-self:center; }
+.preview-toolbar .toolbar-actions { justify-self:end; }
+@media (max-width:1450px) and (min-width:761px) {
+ .preview-toolbar { grid-template-columns:1fr 1fr; grid-template-rows:auto auto; gap:4px; padding:8px 20px; }
+ .preview-toolbar .preview-format { grid-column:1 / -1; grid-row:2; }
+ .preview-toolbar .toolbar-actions { grid-column:2; grid-row:1; }
+ .extract-workspace .preview-panel { grid-template-rows:98px 40px minmax(0,1fr) 44px; }
+}
+@media (max-width:760px) {
+ .preview-toolbar { grid-template-columns:auto 1fr; grid-template-rows:auto auto; }
+ .preview-toolbar .preview-format { grid-column:1 / -1; grid-row:2; }
+ .preview-toolbar .toolbar-actions { grid-column:2; grid-row:1; }
+}

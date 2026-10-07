@@ -9,9 +9,9 @@
   <link rel="icon" href="favicon.svg?v=scope3">
   <link rel="preload" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff" as="font" type="font/woff" crossorigin>
   <link rel="stylesheet" href="fonts.css">
-  <link rel="stylesheet" href="style.css?v=20261006-default">
+  <link rel="stylesheet" href="style.css?v=20261007-user-font">
   <script src="profile-presets.js" defer></script>
-  <script src="app.js?v=20261006-default" defer></script>
+  <script src="app.js?v=20261007-user-font" defer></script>
 </head>
 <body>
   <main class="workspace">
@@ -76,8 +76,13 @@
         <div id="font-options" class="font-options"></div>
         <p id="font-status" class="hint" role="status">D2Coding을 불러오는 중입니다.</p>
         
+        <div class="section-title"><span>02</span> User Font</div>
+        <label class="upload-zone profile-font-upload" for="profile-font-file">＋ 글꼴 파일 등록<small>WOFF · WOFF2 · TTF · OTF / 최대 15MB</small></label>
+        <input id="profile-font-file" type="file" accept=".woff,.woff2,.ttf,.otf" hidden>
+        <div class="profile-font-tools"><select id="profile-font-list" aria-label="등록 글꼴 선택"><option value="">등록된 글꼴 없음</option></select><button id="remove-profile-font" disabled>등록 해제</button></div>
+        <p id="profile-font-status" class="hint" role="status">사용 권한을 확보한 파일만 등록하십시오. 파일은 서버로 전송되지 않으며 새로고침 시 초기화됩니다. 자세한 안내는 ? 도움말에서 확인하십시오.</p>
         <div class="section-title">
-          <span>02</span> Font Size
+          <span>03</span> Font Size
         </div>
         <div class="type-size-box">
           <div class="type-target">선택한 내용 <b id="selected-field-name">INFO</b></div>
@@ -186,7 +191,7 @@
       </li>
       <li>
         <b>글꼴과 크기</b>
-        <p>Font 탭에서 모든 입력 내용의 글꼴을 바꿉니다. 크기는 선택한 텍스트에 px 단위로 적용되며, 전체 내용에 적용할 수도 있습니다.</p>
+        <p>Font 탭에서 모든 입력 내용의 글꼴을 바꿉니다. User Font에서 글꼴 파일을 등록하면 즉시 적용되며 위 글꼴 목록에서도 선택할 수 있습니다. 크기는 선택한 텍스트에 px 단위로 적용되며, 전체 내용에 적용할 수도 있습니다.</p>
       </li>
       <li>
         <b>태그와 이미지</b>
@@ -201,6 +206,82 @@
     <p style="font-size: 10px; text-align: center; margin-top: 30px; opacity: 0.6;">
       본 웹사이트는 D2Coding, 나눔고딕코딩, Orbit, 엘리스 디지털 배움체, Intel One Mono, 구름 산스 코드, Mona 폰트를 사용하고 있습니다.
     </p>
+      <details class="license-notice">
+        <summary>글꼴 이용 및 사용자 등록 안내</summary>
+        <p>
+          무료로 제공되는 글꼴도 이용 범위는 라이선스에 따라 다릅니다. 이미지
+          제작·상업적 이용·배포 등 사용 목적에 맞는 권한을 확인하십시오. 각
+          글꼴의 저작권과 라이선스는 원저작자에게 있습니다.
+        </p>
+        <ul>
+          <li>
+            <a
+              href="https://github.com/naver/d2-coding-font/blob/master/LICENSE.md"
+              target="_blank"
+              rel="noopener"
+              >D2Coding / NAVER</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/naver/nanumfont"
+              target="_blank"
+              rel="noopener"
+              >나눔고딕코딩 / NAVER</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/google/fonts/blob/main/ofl/orbit/OFL.txt"
+              target="_blank"
+              rel="noopener"
+              >Orbit / JAMO</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://cdn-front-door.elice.io/font/static/downloads/EliceDigitalBaeum_License.pdf"
+              target="_blank"
+              rel="noopener"
+              >엘리스 디지털 배움체 / 엘리스</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/intel/intel-one-mono"
+              target="_blank"
+              rel="noopener"
+              >Intel One Mono / Intel</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://goorm.co/resources/fonts"
+              target="_blank"
+              rel="noopener"
+              >구름 산스 코드 / 구름</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/MonadABXY/mona-font"
+              target="_blank"
+              rel="noopener"
+              >Mona / MonadABXY</a
+            >
+          </li>
+        </ul>
+        <p>
+          직접 등록하는 폰트는 사용 권한을 확보한 파일로 한정합니다. 등록 파일은
+          서버로 전송되지 않으며 현재 브라우저에서만 사용합니다. 등록 폰트는 새로고침하거나 페이지를 닫으면 초기화됩니다.
+        </p>
+        <p>
+          본 서비스는 사용자가 직접 등록한 폰트의 라이선스를 확인하거나 보증하지
+          않습니다. 해당 폰트의 이용 권한 확인과 사용으로 발생하는 저작권 문제의
+          책임은 사용자에게 있으며, 서비스 제작·배포자는 사용자 등록 폰트의 무단
+          사용으로 발생하는 분쟁에 책임을 지지 않습니다.
+        </p>
+      </details>
     <button class="primary full dialog-close">ACCESS</button>
   </dialog>
 

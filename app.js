@@ -7,7 +7,8 @@ const $ = id => document.getElementById(id),
 const mono = '"D2Coding", monospace',
       sans = mono;
 
-const FONTS = window.ChamberProfile.FONTS;
+const FONTS = [...window.ChamberProfile.FONTS];
+const profileUserFonts = new Map();
 
 const FIELD_META = {
   name: ['이름 / 닉네임', 24, 'YOUR NAME'],
@@ -1245,6 +1246,51 @@ function renderFonts() {
     root.append(b);
   });
 }
+
+function renderUserFonts() {
+  const list = $('profile-font-list');
+  list.replaceChildren(new Option(profileUserFonts.size ? '등록 글꼴 선택' : '등록된 글꼴 없음', ''),
+    ...[...profileUserFonts.values()].map(f => new Option(f.label, f.id)));
+  if (profileUserFonts.has(state.font)) list.value = state.font;
+  $('remove-profile-font').disabled = !list.value;
+  renderFonts();
+}
+$('profile-font-file').onchange = async () => {
+  const input = $('profile-font-file'), file = input.files[0];
+  if (!file) return;
+  input.disabled = true;
+  try {
+    if (!/\.(woff2?|ttf|otf)$/i.test(file.name) || file.size > 15 * 1024 * 1024)
+      throw new Error('지원 규격: WOFF / WOFF2 / TTF / OTF, 15MB 이하.');
+    if (profileUserFonts.size >= 20) throw new Error('등록 글꼴 한도 20개 도달.');
+    const id = 'user-' + crypto.randomUUID(), family = 'ChamberProfileUser_' + id.replaceAll('-', '');
+    const face = new FontFace(family, await file.arrayBuffer());
+    await face.load();
+    document.fonts.add(face);
+    const font = {id, family, label:file.name.replace(/\.[^.]+$/, '').slice(0,80), sample:'USER FONT', face};
+    profileUserFonts.set(id,font); FONTS.push(font);
+    await selectFont(id);
+    renderUserFonts();
+    $('profile-font-status').textContent = font.label + ' · 등록 완료. 현재 페이지에서만 사용합니다.';
+  } catch (error) {
+    $('profile-font-status').textContent = '등록 실패. ' + error.message;
+  } finally { input.value = ''; input.disabled = false; }
+};
+$('profile-font-list').onchange = async () => {
+  $('remove-profile-font').disabled = !$('profile-font-list').value;
+  if ($('profile-font-list').value) await selectFont($('profile-font-list').value);
+};
+$('remove-profile-font').onclick = () => {
+  const id = $('profile-font-list').value, font = profileUserFonts.get(id);
+  if (!font) return;
+  ++fontSequence;
+  if (state.font === id) state.font = FONTS[0].id;
+  document.fonts.delete(font.face); fontLoads.delete(font.family + false);
+  profileUserFonts.delete(id); FONTS.splice(FONTS.findIndex(f => f.id === id),1);
+  renderUserFonts(); draw();
+  $('font-status').textContent = fontChoice().label + ' 적용';
+  $('profile-font-status').textContent = font.label + ' · 등록 해제 완료.';
+};
 
 const fontLoads = new Map();
 
