@@ -6,10 +6,10 @@
   const toggle = document.getElementById("panel-size-toggle");
   const mobile = matchMedia("(max-width: 760px)");
   const editable = 'textarea, input:not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"])';
-  let preferred = 0.42, editing = false, expanded = false, editingHeight = 98, previewMode = false;
-  let height = 98, drag = null, revealFrame = 0;
+  let preferred = 0.42, editing = false, expanded = false, editingHeight = 132, previewMode = false;
+  let height = 132, drag = null, revealFrame = 0;
   function limits() {
-    return { min: 98, max: Math.max(98, workspace.clientHeight - 230) };
+    return { min: 132, max: Math.max(132, workspace.clientHeight - 230) };
   }
   function notify() {
     if (parent !== window)
@@ -85,7 +85,7 @@
   controls.addEventListener("focusin", (event) => {
     if (!mobile.matches || !event.target.matches(editable)) return;
     editing = true;
-    editingHeight = 98;
+    editingHeight = 132;
     notify();
     layout();
   });

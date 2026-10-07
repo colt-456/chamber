@@ -128,6 +128,7 @@
     );
   }
   function render() {
+    recordHistory();
     clearTimeout(drawTimer);
     $("empty-state").hidden = state.blocks.length > 0;
     $("canvas-holder").hidden = !state.blocks.length;
@@ -146,6 +147,14 @@
     try {
       result = core.layout(measure, state);
       page = Math.min(page, result.pages.length - 1);
+      if (previewEditing && document.activeElement === $("preview-text-editor")) {
+        const offset = $("preview-text-editor").selectionEnd;
+        let caretPage = -1;
+        result.pages.forEach((rows, index) => {
+          if (rows.some(row => row.blockId === previewEditing && row.glyphs.some(g => g.index <= offset))) caretPage = index;
+        });
+        if (caretPage >= 0) page = caretPage;
+      }
       previewHits = core.draw(canvas, state, result, page);
       renderPreviewHits();
       fitCanvas();
@@ -411,6 +420,7 @@
     $("style-highlight-on").checked = !!style.highlight;
     $("style-highlight").value = style.highlight || "#526124";
     $("style-align").value = style.align || "auto";
+    $("preview-align").value = currentBlock() ? core.blockStyle(currentBlock(), state).textAlign || "left" : "left";
     $("target-note").textContent =
       $("style-target").value === "selected"
         ? "선택 문단 적용."
@@ -1178,6 +1188,7 @@
         clean[key] = style[key];
     for (const key of ["bold", "italic", "strike", "underline"])
       if (typeof style[key] === "boolean") clean[key] = style[key];
+    if (["left", "center", "right", "justify"].includes(style.textAlign)) clean.textAlign = style.textAlign;
     if (["auto", "left", "right"].includes(style.align))
       clean.align = style.align;
     return clean;
@@ -1318,6 +1329,7 @@
   function applySelectionStyle(key, value) {
     const block = currentBlock();
     if (!block) return message("미리보기 또는 TEXT에서 문단을 선택하십시오.", true);
+    recordHistory();
     const {start, end} = selection;
     if (value === undefined) {
       const style = {...core.blockStyle(block, state)};
@@ -1333,6 +1345,7 @@
   function closePreviewEditor() {
     if (!previewEditing) return;
     previewEditing = null;
+    $("preview-selection").replaceChildren();
     $("preview-editor-wrap").hidden = true;
     document.dispatchEvent(new CustomEvent("excerpt:preview-edit", {detail: false}));
   }
@@ -1342,14 +1355,57 @@
     if (!hit) return closePreviewEditor();
     const ratio = canvas.clientWidth / result.width;
     const wrap = $("preview-editor-wrap"), input = $("preview-text-editor");
-    const width = Math.min(canvas.clientWidth, Math.max(220, hit.width * ratio));
-    wrap.style.left = `${Math.max(0, Math.min(hit.x * ratio, canvas.clientWidth - width))}px`;
+    wrap.style.left = `${hit.x * ratio}px`;
     wrap.style.top = `${hit.y * ratio}px`;
-    wrap.style.width = `${width}px`;
-    input.style.height = `${Math.min(220, Math.max(100, hit.height * ratio + 24))}px`;
+    wrap.style.width = `${hit.width * ratio}px`;
+    wrap.style.height = `${hit.height * ratio}px`;
     input.style.fontFamily = state.config.fontFamily;
-    input.style.fontSize = `${Math.max(16, state.config.fontSize * ratio)}px`;
+    input.style.fontSize = `${state.config.fontSize * ratio}px`;
+    input.style.lineHeight = state.config.lineHeight;
+    paintPreviewSelection();
   }
+  function paintPreviewSelection() {
+    const layer = $("preview-selection");
+    layer.replaceChildren();
+    if (!previewEditing || !result) return;
+    const hit = previewHits.find(h => h.blockId === previewEditing);
+    if (!hit) return;
+    const ratio = canvas.clientWidth / result.width;
+    const {start, end} = selection;
+    let caret = null;
+    function rect(x,y,w,h,kind) {
+      const node = document.createElement("i");
+      node.className = kind;
+      Object.assign(node.style, {left:`${x*ratio}px`,top:`${y*ratio}px`,width:`${Math.max(1,w*ratio)}px`,height:`${h*ratio}px`});
+      layer.append(node);
+    }
+    for (const line of hit.lines) {
+      let x = line.x;
+      for (const g of line.glyphs) {
+        if (g.index < end && g.index + g.text.length > start)
+          rect(x,line.y,g.advance,state.config.fontSize*1.2,"preview-selection-range");
+        if (g.index <= start) caret = {x:x+(start>g.index?g.advance:0), y:line.y};
+        x += g.advance;
+      }
+      if (!line.glyphs.length && line.start <= start) caret = {x:line.x,y:line.y};
+    }
+    if (start === end && caret) rect(caret.x,caret.y,1.5/ratio,state.config.fontSize*1.2,"preview-caret");
+  }
+  function previewOffset(event) {
+    const hit = previewHits.find(h => h.blockId === previewEditing);
+    if (!hit?.lines.length) return 0;
+    const box = canvas.getBoundingClientRect(), ratio = canvas.clientWidth / result.width;
+    const x = (event.clientX-box.left)/ratio, y = (event.clientY-box.top)/ratio;
+    const line = hit.lines.reduce((best,l) => Math.abs(l.y+l.height/2-y)<Math.abs(best.y+best.height/2-y)?l:best);
+    let left = line.x;
+    for (const g of line.glyphs) {
+      if (x < left + g.advance/2) return g.index;
+      left += g.advance;
+    }
+    const last = line.glyphs.at(-1);
+    return last ? last.index + last.text.length : line.start;
+  }
+
   function openPreviewEditor(hit) {
     selected = hit.blockId;
     renderBlocks();
@@ -1363,7 +1419,9 @@
     input.focus({preventScroll: true});
     input.setSelectionRange(hit.start, hit.start);
     selection = {start: hit.start, end: hit.start};
+    paintPreviewSelection();
     input.scrollIntoView({block: "nearest"});
+    recordHistory();
   }
   function renderPreviewHits() {
     $("preview-hits").replaceChildren(...previewHits.map(hit => {
@@ -1372,7 +1430,15 @@
       b.setAttribute("aria-label", `문단 직접 편집: ${state.blocks.find(x => x.id === hit.blockId)?.text.slice(0, 35) || "빈 문단"}`);
       Object.assign(b.style, {left: `${hit.x / result.width * 100}%`, top: `${hit.y / result.height * 100}%`,
         width: `${hit.width / result.width * 100}%`, height: `${hit.height / result.height * 100}%`});
-      b.onclick = () => openPreviewEditor(hit);
+      b.onclick = event => {
+        openPreviewEditor(hit);
+        if (event.detail) {
+          const offset = previewOffset(event);
+          previewInput.setSelectionRange(offset, offset);
+          selection = {start:offset,end:offset};
+          paintPreviewSelection();
+        }
+      };
       return b;
     }));
     if (previewEditing && previewEditing !== selected) closePreviewEditor();
@@ -1380,7 +1446,8 @@
   }
   const previewInput = $("preview-text-editor");
   for (const event of ["select", "keyup", "mouseup", "touchend"])
-    previewInput.addEventListener(event, () => { selection = {start: previewInput.selectionStart, end: previewInput.selectionEnd}; });
+    previewInput.addEventListener(event, () => { selection = {start: previewInput.selectionStart, end: previewInput.selectionEnd}; paintPreviewSelection(); });
+  previewInput.addEventListener("beforeinput", recordHistory);
   previewInput.addEventListener("input", () => {
     const block = currentBlock();
     if (!block || previewEditing !== block.id) return;
@@ -1393,12 +1460,31 @@
     selection = {start: previewInput.selectionStart, end: previewInput.selectionEnd};
     const item = [...$("block-list").children].find(b => b.dataset.id === selected);
     if (item) item.querySelector("small").textContent = next;
-    schedule();
+    render();
+    requestAnimationFrame(() => $("preview-selection").querySelector(".preview-caret")?.scrollIntoView({block:"nearest", inline:"nearest"}));
   });
+  let pointerAnchor = null;
+  previewInput.addEventListener("pointerdown", event => {
+    event.preventDefault();
+    previewInput.focus({preventScroll:true});
+    pointerAnchor = previewOffset(event);
+    previewInput.setPointerCapture(event.pointerId);
+    selection = {start:pointerAnchor,end:pointerAnchor};
+    previewInput.setSelectionRange(pointerAnchor,pointerAnchor);
+    paintPreviewSelection();
+  });
+  previewInput.addEventListener("pointermove", event => {
+    if (pointerAnchor === null) return;
+    const offset = previewOffset(event);
+    selection = {start:Math.min(pointerAnchor,offset),end:Math.max(pointerAnchor,offset)};
+    previewInput.setSelectionRange(selection.start,selection.end);
+    paintPreviewSelection();
+  });
+  for (const type of ["pointerup","pointercancel"]) previewInput.addEventListener(type, () => {pointerAnchor=null;});
   previewInput.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); closePreviewEditor(); } });
   $("finish-preview-edit").onclick = closePreviewEditor;
   document.addEventListener("pointerdown", e => {
-    if (previewEditing && !e.target.closest("#preview-editor-wrap, #preview-format, .inline-toolbar, .preview-hit")) closePreviewEditor();
+    if (previewEditing && !e.target.closest("#preview-editor-wrap, #preview-format, #find-dialog, .inline-toolbar, .preview-hit")) closePreviewEditor();
   });
   document.querySelectorAll("[data-preview-mark]").forEach(b => {
     b.addEventListener("pointerdown", e => e.preventDefault());
@@ -1422,6 +1508,127 @@
       message("클립보드 읽기 불가. 브라우저 권한을 허용하거나 입력란에서 직접 붙여넣으십시오. 기존 내용 유지.", true);
     }
   };
+
+  const undoStack = [], redoStack = [];
+  let historyCurrent = null, restoringHistory = false;
+  function historySnapshot() {
+    const {backgroundImage, speakerImages, backgroundData, speakerData, ...data} = state;
+    return {data:structuredClone(data), backgroundImage, backgroundData, speakerData:{...speakerData}, speakerImages:{...speakerImages}, raw:$("raw-text").value, selected, selection:{...selection}, page};
+  }
+  function recordHistory() {
+    if (restoringHistory) return;
+    const next = historySnapshot();
+    const key = JSON.stringify([next.data,next.raw]);
+    if (historyCurrent?.key === key && historyCurrent.backgroundData === next.backgroundData && JSON.stringify(historyCurrent.speakerData) === JSON.stringify(next.speakerData)) {
+      Object.assign(historyCurrent,{selected,selection:{...selection},page});
+      return;
+    }
+    if (historyCurrent) undoStack.push(historyCurrent);
+    if (undoStack.length > 60) undoStack.shift();
+    historyCurrent = {...next,key};
+    redoStack.length = 0;
+    updateHistoryButtons();
+  }
+  function updateHistoryButtons() {
+    $("edit-undo").disabled = !undoStack.length;
+    $("edit-redo").disabled = !redoStack.length;
+  }
+  function moveHistory(redo) {
+    recordHistory();
+    const from = redo ? redoStack : undoStack, to = redo ? undoStack : redoStack;
+    if (!from.length) return;
+    const wasEditing = !!previewEditing;
+    closePreviewEditor();
+    to.push(historyCurrent);
+    historyCurrent = from.pop();
+    const saved = historyCurrent;
+    restoringHistory = true;
+    state = {...structuredClone(saved.data),backgroundData:saved.backgroundData,speakerData:{...saved.speakerData},backgroundImage:saved.backgroundImage,speakerImages:{...saved.speakerImages}};
+    selected = saved.selected;
+    selection = {...saved.selection}; page = saved.page;
+    $("raw-text").value = saved.raw;
+    syncConfig(); renderBlocks(); renderStyleTargets(); updateCount(); render();
+    if (wasEditing) {
+      const hit = previewHits.find(h=>h.blockId===selected);
+      if (hit) {
+        openPreviewEditor(hit);
+        const end = Math.min(saved.selection.end,currentBlock().text.length);
+        selection = {start:Math.min(saved.selection.start,end),end};
+        previewInput.setSelectionRange(selection.start,end);
+        paintPreviewSelection();
+      }
+    }
+    restoringHistory = false;
+    updateHistoryButtons();
+  }
+  for (const id of ["edit-undo","edit-redo"]) $(id).addEventListener("pointerdown",e=>e.preventDefault());
+  $("edit-undo").onclick = () => moveHistory(false);
+  $("edit-redo").onclick = () => moveHistory(true);
+  document.addEventListener("keydown", e => {
+    if (e.isComposing || !(e.ctrlKey || e.metaKey) || $("find-dialog").contains(e.target)) return;
+    if (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y") {
+      e.preventDefault(); moveHistory(e.shiftKey || e.key.toLowerCase() === "y");
+    }
+  });
+  $("preview-align").onchange = e => {
+    const block = currentBlock();
+    if (!block) return message("정렬할 문단을 선택하십시오.",true);
+    recordHistory();
+    block.style.textAlign = e.target.value;
+    render();
+  };
+  let foundMatch = null;
+  function matches() {
+    const query = $("find-query").value, found = [];
+    if (!query) return found;
+    for (const block of state.blocks) {
+      let start = 0;
+      while ((start = block.text.indexOf(query,start)) !== -1) {
+        found.push({id:block.id,start,end:start+query.length}); start += query.length;
+      }
+    }
+    return found;
+  }
+  function findNext() {
+    const list = matches();
+    if (!list.length) {foundMatch=null; $("find-status").textContent="일치하는 본문 없음."; return;}
+    const previous = list.findIndex(m=>m.id===foundMatch?.id && m.start===foundMatch.start);
+    const index = (previous+1)%list.length;
+    foundMatch = list[index]; selected = foundMatch.id;
+    closePreviewEditor();
+    page = result.pages.findIndex(rows=>rows.some(r=>r.blockId===selected && r.glyphs.some(g=>g.index>=foundMatch.start && g.index<foundMatch.end)));
+    page = Math.max(0,page); render();
+    const hit = previewHits.find(h=>h.blockId===selected);
+    if (hit) {
+      openPreviewEditor(hit); selection={start:foundMatch.start,end:foundMatch.end};
+      previewInput.setSelectionRange(selection.start,selection.end); paintPreviewSelection();
+      $("find-next").focus({preventScroll:true});
+    }
+    $("find-status").textContent=`${index+1} / ${list.length}개 일치`;
+  }
+  function replaceMatches(all) {
+    let list = matches();
+    if (!all) list = list.filter(m=>m.id===foundMatch?.id && m.start===foundMatch.start).slice(0,1);
+    if (!list.length) {findNext(); return;}
+    const replacement = $("replace-query").value;
+    const total = state.blocks.reduce((n,b)=>n+b.text.length,0) + list.reduce((n,m)=>n+replacement.length-(m.end-m.start),0);
+    if (total>30000) {$("find-status").textContent="30,000자 한도 초과. 기존 내용 유지."; return;}
+    recordHistory(); closePreviewEditor();
+    for (const m of [...list].reverse()) {
+      const block = state.blocks.find(b=>b.id===m.id);
+      const next = block.text.slice(0,m.start)+replacement+block.text.slice(m.end);
+      remapMarks(block,next); block.text=next;
+    }
+    foundMatch=null;
+    renderBlocks(); renderStyleTargets(); render();
+    $("find-status").textContent=`${list.length}개 치환 완료 · 남은 일치 ${matches().length}개`;
+  }
+  $("find-open").onclick = () => {$("find-dialog").show(); $("find-query").focus();};
+  $("find-close").onclick = () => $("find-dialog").close();
+  $("find-query").oninput = () => {foundMatch=null; $("find-status").textContent=`${matches().length}개 일치`;};
+  $("find-next").onclick = findNext;
+  $("replace-one").onclick = () => replaceMatches(false);
+  $("replace-all").onclick = () => replaceMatches(true);
   document.fonts.addEventListener("loadingdone", schedule);
   syncConfig();
   renderBlocks();

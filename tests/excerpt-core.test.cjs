@@ -181,3 +181,22 @@ test("avatar space is reserved only for enabled chat speakers with an image", ()
   assert.ok(withAvatar.pages[0][0].textWidth < without.pages[0][0].textWidth);
   assert.equal(textOf(withAvatar.pages), textOf(without.pages));
 });
+
+
+test("alignment respects available width and leaves the final justified line unchanged", () => {
+  const line = {width:30,last:false,glyphs:[{text:"가",index:0,advance:10},{text:" ",index:1,advance:10},{text:"나",index:2,advance:10}]};
+  assert.equal(core.alignLine(line,100,"center").offset,35);
+  assert.equal(core.alignLine(line,100,"right").offset,70);
+  const justified = core.alignLine(line,100,"justify").line;
+  assert.equal(justified.glyphs.reduce((n,g)=>n+g.advance,0),100);
+  assert.equal(justified.glyphs[1].advance,80);
+  assert.equal(core.alignLine({...line,last:true},100,"justify").line.width,30);
+  assert.equal(line.glyphs[1].advance,10);
+});
+test("editing geometry preserves blank lines and UTF-16 text positions", () => {
+  const c = state("x").config;
+  const lines = core.wrap(context,"가😀\n\n나\n",600,c,{});
+  assert.deepEqual(lines.map(l=>l.start),[0,4,5,7]);
+  assert.deepEqual(lines[0].glyphs.map(g=>g.index),[0,1]);
+  assert.equal(lines.length,4);
+});

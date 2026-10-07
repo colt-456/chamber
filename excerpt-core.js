@@ -81,15 +81,17 @@
   function wrap(ctx, text, width, config, base, marks = []) {
     const lines = [];
     let glyphs = [],
-      used = 0;
-    const push = () => {
-      lines.push({ glyphs, width: Math.max(0, used - config.letterSpacing) });
+      used = 0, lineStart = 0;
+    const push = (end = text.length) => {
+      lines.push({ glyphs, start: lineStart, end, width: Math.max(0, used - config.letterSpacing) });
+      lineStart = end;
       glyphs = [];
       used = 0;
     };
     for (const part of graphemes(text)) {
       if (part.text === "\n") {
-        push();
+        push(part.index);
+        lineStart = part.index + 1;
         continue;
       }
       const style = { ...base };
@@ -103,11 +105,11 @@
           config.letterSpacing,
       );
       if (used + advance - config.letterSpacing > width && glyphs.length)
-        push();
+        push(part.index);
       glyphs.push({ text: part.text, index: part.index, advance, style });
       used += advance;
     }
-    if (glyphs.length || !lines.length) push();
+    if (glyphs.length || !lines.length || text.endsWith("\n")) push();
     return lines;
   }
   function splitRows(rows, capacity) {
@@ -305,6 +307,16 @@
       metadataHeights: heights,
       totalRows: rows.length,
     };
+  }
+  function alignLine(line, width, alignment, justifyLast = false) {
+    const free = Math.max(0, width - line.width);
+    if (alignment === "center") return {line, offset: free / 2};
+    if (alignment === "right") return {line, offset: free};
+    if (alignment !== "justify" || (line.last && !justifyLast) || line.glyphs.length < 2) return {line, offset: 0};
+    let gaps = line.glyphs.map((g,i) => /\s/.test(g.text) && i < line.glyphs.length-1 ? i : -1).filter(i => i >= 0);
+    if (!gaps.length) gaps = line.glyphs.slice(0,-1).map((_,i) => i);
+    const positions = new Set(gaps);
+    return {offset:0, line:{...line, width, glyphs:line.glyphs.map((g,i) => ({...g,advance:g.advance+(positions.has(i)?free/gaps.length:0)}))}};
   }
   function drawLine(ctx, line, x, y, config) {
     for (const glyph of line.glyphs) {
@@ -514,15 +526,25 @@
       hitAreas.push({ blockId: row.blockId, x: row.chat ? left + 18 : c.padding,
         y: y + row.top, width: row.chat ? bubbleWidth - 36 : row.textWidth,
         height: Math.max(c.fontSize * c.lineHeight, groupHeight - row.top - group[group.length - 1].bottom),
-        start: row.glyphs[0]?.index || 0 });
+        start: row.glyphs[0]?.index || 0, lines: [] });
       for (const item of group) {
-        const x = row.chat ? left + 18 : c.padding;
+        const areaX = row.chat ? left + 18 : c.padding;
+        const areaWidth = row.chat ? bubbleWidth - 36 : row.textWidth;
+        const lastGlyph = item.glyphs.at(-1);
+        const block = state.blocks.find(b => b.id === item.blockId);
+        const hardBreak = lastGlyph && block?.text[lastGlyph.index + lastGlyph.text.length] === "\n";
+        const aligned = alignLine({...item,last:item.last || hardBreak}, areaWidth, row.style.textAlign || "left");
+        const x = areaX + aligned.offset;
         if (item.first && item.speaker) {
           ctx.font = `bold 12px ${c.fontFamily}`;
           ctx.fillStyle = c.accent;
-          ctx.fillText(item.speaker, x, y + (row.chat ? 25 : 12));
+          ctx.fillText(item.speaker, areaX, y + (row.chat ? 25 : 12));
         }
-        drawLine(ctx, item, x, y + item.top + c.fontSize * 0.92, c);
+        hitAreas[hitAreas.length - 1].lines.push({
+          x, start: item.start, y: y + item.top, height: c.fontSize * c.lineHeight,
+          glyphs: aligned.line.glyphs.map(g => ({index: g.index, text: g.text, advance: g.advance}))
+        });
+        drawLine(ctx, aligned.line, x, y + item.top + c.fontSize * 0.92, c);
         y += item.height;
       }
       i = end;
@@ -611,6 +633,7 @@
     splitFour,
     blockStyle,
     graphemes,
+    alignLine,
   };
   if (typeof module !== "undefined") module.exports = root.ExcerptCore;
 })(typeof window !== "undefined" ? window : globalThis);
