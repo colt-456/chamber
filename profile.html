@@ -9,14 +9,20 @@
   <link rel="icon" href="favicon.svg?v=scope3">
   <link rel="preload" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff" as="font" type="font/woff" crossorigin>
   <link rel="stylesheet" href="fonts.css">
-  <link rel="stylesheet" href="style.css?v=20261007-user-font">
+  <link rel="stylesheet" href="style.css?v=20261029-handle">
   <script src="profile-presets.js" defer></script>
   <script src="app.js?v=20261007-user-font" defer></script>
-<script src="profile-mobile.js" defer></script></head>
-<body>
+<script src="profile-mobile.js?v=20261029-handle" defer></script></head>
+<body class="profile-page">
   <main class="workspace">
     <aside class="editor" aria-label="CONTROL PANEL">
-      <div class="editor-title">
+            <div class="panel-resizer" role="separator" tabindex="0"
+        aria-label="컨트롤 패널 높이 조절" aria-orientation="horizontal"
+        aria-controls="panel-style panel-fonts panel-images panel-stickers"
+        aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <span aria-hidden="true">━━━━</span> PANEL / 위아래로 조절
+        <button type="button" id="panel-size-toggle" aria-label="컨트롤 패널 최대 확장">확장 ↑</button>
+      </div><div class="editor-title">
         <span class="eyebrow">SYS. CONTROL</span>
         <button id="help" class="quiet" aria-label="User Manual">?</button>
         <h1>Control Panel<span>EDIT / 01</span></h1>
