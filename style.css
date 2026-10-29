@@ -1036,3 +1036,13 @@ dialog li b {
 .profile-font-tools { display:flex; gap:8px; margin-top:10px; }
 .profile-font-tools select { min-width:0; flex:1; }
 .profile-font-tools button { flex-shrink:0; }
+.profile-panel-size { display:none; }
+.profile-zoom { display:flex; gap:8px; padding:4px 12px; }
+.preview { grid-template-rows:55px auto minmax(0,1fr) 26px; }
+@media(max-width:760px) {
+  .workspace { grid-template-rows:minmax(132px,var(--preview-height,48dvh)) minmax(0,1fr); }
+  .preview { grid-template-rows:55px auto minmax(0,1fr) 26px; }
+  .profile-panel-size { display:block; width:calc(100% - 32px); margin:10px 16px; flex-shrink:0; touch-action:none; }
+  .stage { touch-action:pan-x pan-y pinch-zoom; }
+  .inline-editor { overflow:auto; max-height:60dvh; }
+}

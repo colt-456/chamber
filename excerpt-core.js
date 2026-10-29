@@ -353,35 +353,35 @@
       x += glyph.advance;
     }
   }
-  function draw(canvas, state, result, pageIndex) {
+  function draw(canvas, state, result, pageIndex, pixelRatio = 1) {
     const hitAreas = [];
     const c = state.config;
-    canvas.width = result.width;
-    canvas.height = result.height;
-    const ctx = canvas.getContext("2d");
+    canvas.width = Math.round(result.width * pixelRatio);
+    canvas.height = Math.round(result.height * pixelRatio);
+    const ctx = canvas.getContext("2d"); ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     const background = ctx.createLinearGradient(
       0,
       0,
-      canvas.width,
-      canvas.height,
+      result.width,
+      result.height,
     );
     background.addColorStop(0, c.background);
     background.addColorStop(1, c.backgroundEnd || c.background);
     ctx.fillStyle = background;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, result.width, result.height);
     if (state.backgroundImage) {
       const img = state.backgroundImage;
       const ratio = Math.max(
-        canvas.width / img.width,
-        canvas.height / img.height,
+        result.width / img.width,
+        result.height / img.height,
       );
       ctx.save();
       ctx.globalAlpha = c.imageOpacity;
       ctx.filter = `brightness(${c.imageBrightness}%)`;
       ctx.drawImage(
         img,
-        (canvas.width - img.width * ratio) / 2,
-        (canvas.height - img.height * ratio) / 2,
+        (result.width - img.width * ratio) / 2,
+        (result.height - img.height * ratio) / 2,
         img.width * ratio,
         img.height * ratio,
       );
@@ -393,24 +393,24 @@
       ctx.globalAlpha = 0.07;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      for (let x = 0; x < canvas.width; x += 32) {
+      for (let x = 0; x < result.width; x += 32) {
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        ctx.lineTo(x, result.height);
       }
-      for (let y = 0; y < canvas.height; y += 32) {
+      for (let y = 0; y < result.height; y += 32) {
         ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.lineTo(result.width, y);
       }
       ctx.stroke();
       ctx.restore();
     }
     if (c.frameStyle !== "none")
-      drawHUDFrame(ctx, canvas.width, canvas.height, c.accent);
+      drawHUDFrame(ctx, result.width, result.height, c.accent);
     for (const [position, items] of Object.entries(result.metadata)) {
       const top =
         position[0] === "t"
           ? c.padding
-          : canvas.height -
+          : result.height -
             c.padding -
             result.metadataHeights[position] -
             (c.pageNumbers ? 20 : 0);
@@ -418,7 +418,7 @@
         item.lines.forEach((line, i) => {
           const x =
             position[1] === "r"
-              ? canvas.width - c.padding - line.width
+              ? result.width - c.padding - line.width
               : c.padding;
           drawLine(
             ctx,
@@ -555,8 +555,8 @@
       ctx.textAlign = "right";
       ctx.fillText(
         `${pageIndex + 1} / ${result.pages.length}`,
-        canvas.width - c.padding,
-        canvas.height - c.padding + 8,
+        result.width - c.padding,
+        result.height - c.padding + 8,
       );
       ctx.textAlign = "left";
     }

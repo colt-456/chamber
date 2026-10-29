@@ -1028,7 +1028,7 @@
           target,
           snapshot,
           output,
-          Math.min(currentPage, output.pages.length - 1),
+          Math.min(currentPage, output.pages.length - 1), 2,
         );
         download(
           await toPNG(target),
@@ -1039,7 +1039,7 @@
         let byteCount = 0;
         for (let i = 0; i < output.pages.length; i++) {
           message(`PNG OUTPUT / ${i + 1} OF ${output.pages.length}`);
-          core.draw(target, snapshot, output, i);
+          core.draw(target, snapshot, output, i, 2);
           const blob = await toPNG(target);
           byteCount += blob.size;
           if (byteCount > 200 * 1024 * 1024)

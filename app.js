@@ -537,9 +537,9 @@ function draw(forExport = false) {
         footerH = Math.max(75, fieldHeight('credit', creditW) + 48);
         
   H = Math.max(notesBottom + footerH + 25, galleryBottom + footerH + 25, p ? 1000 : 800);
-  canvas.width = W * 2;
-  canvas.height = H * 2;
-  ctx.setTransform(2, 0, 0, 2, 0, 0);
+  const outputScale = exporting ? 3 : 2; canvas.width = W * outputScale;
+  canvas.height = H * outputScale;
+  ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
   hits = [];
   
   const bg = ctx.createLinearGradient(0, 0, W, H);
@@ -702,7 +702,7 @@ function draw(forExport = false) {
   }
   
   $('dimensions').textContent = `${W} × ${H} PX`;
-  $('scale-label').textContent = `PNG · ${W * 2} × ${H * 2}`;
+  $('scale-label').textContent = `PNG · ${W * 3} × ${H * 3}`;
   
   if (!exporting) {
     syncHotspots();
